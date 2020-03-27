@@ -8,8 +8,19 @@ layout(binding = 0, std140) buffer PixelBuffer {
   vec4 pixels[];
 } pixelBuffer;
 
+layout(binding = 1) uniform SettingsBuffer {
+  uint sampleCount;
+  uint totalSampleCount;
+  uint lightCount;
+  uint screenWidth;
+  uint screenHeight;
+  uint pad_0;
+  uint pad_1;
+  uint pad_2;
+} Settings;
+
 void main() {
-  const vec2 resolution = vec2(1280, 768);
+  const vec2 resolution = vec2(Settings.screenWidth, Settings.screenHeight);
   const ivec2 bufferCoord = ivec2(floor(uv * resolution));
   const vec2 fragCoord = (uv * resolution);
   const uint pixelIndex = bufferCoord.y * uint(resolution.x) + bufferCoord.x;

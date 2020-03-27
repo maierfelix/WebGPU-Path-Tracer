@@ -80,14 +80,6 @@ Object.assign(global, glMatrix);
   let rayShadowCHitShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-closest-hit.rchit`) });
   let rayShadowMissShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-miss.rmiss`) });
 
-  let pixelBufferByteLength = window.width * window.height * 4 * Float32Array.BYTES_PER_ELEMENT;
-  let pixelBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: pixelBufferByteLength });
-  pixelBuffer.byteLength = pixelBufferByteLength;
-
-  let accumulationBufferByteLength = window.width * window.height * 4 * Float32Array.BYTES_PER_ELEMENT;
-  let accumulationBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: accumulationBufferByteLength });
-  accumulationBuffer.byteLength = accumulationBufferByteLength;
-
   let geometryBuffer = new GeometryBuffer({ device, geometries });
 
   let faceBuffer = geometryBuffer.getFaceBuffer();
@@ -231,6 +223,28 @@ Object.assign(global, glMatrix);
   let lightBuffer = new LightBuffer({ device, instances, lights });
   let lightsBuffer = lightBuffer.getLightBuffer();
 
+  let sampleCount = 4;
+  let totalSampleCount = sampleCount;
+
+  let pixelBufferByteLength = window.width * window.height * 4 * Float32Array.BYTES_PER_ELEMENT;
+  let pixelBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: pixelBufferByteLength });
+  pixelBuffer.byteLength = pixelBufferByteLength;
+
+  let accumulationBufferByteLength = window.width * window.height * 4 * Float32Array.BYTES_PER_ELEMENT;
+  let accumulationBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: accumulationBufferByteLength });
+  accumulationBuffer.byteLength = accumulationBufferByteLength;
+
+  let settingsBufferByteLength = 8 * Uint32Array.BYTES_PER_ELEMENT;
+  let settingsBuffer = device.createBuffer({ usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM, size: settingsBufferByteLength });
+  settingsBuffer.byteLength = settingsBufferByteLength;
+  settingsBuffer.setSubData(0, new Uint32Array([
+    sampleCount,
+    totalSampleCount,
+    lights.length,
+    window.width,
+    window.height
+  ]));
+
   let shaderBindingTable = device.createRayTracingShaderBindingTable({
     stages: [
       { module: rayGenShaderModule,        stage: GPUShaderStage.RAY_GENERATION },
@@ -250,17 +264,18 @@ Object.assign(global, glMatrix);
 
   let rtBindGroupLayout = device.createBindGroupLayout({
     bindings: [
-      { binding: 0, type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION },
-      { binding: 1, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
-      { binding: 2, type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 3, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
-      { binding: 4, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 5, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 6, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 7, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 8, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 9, type: "sampler",                visibility: GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 10, type: "sampled-texture",       visibility: GPUShaderStage.RAY_CLOSEST_HIT, textureDimension: "2d-array" },
+      { binding: 0,  type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION },
+      { binding: 1,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
+      { binding: 2,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
+      { binding: 3,  type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 4,  type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 5,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 6,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 7,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 8,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 9,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 10, type: "sampler",                visibility: GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 11, type: "sampled-texture",        visibility: GPUShaderStage.RAY_CLOSEST_HIT, textureDimension: "2d-array" },
     ]
   });
 
@@ -269,15 +284,16 @@ Object.assign(global, glMatrix);
     bindings: [
       { binding: 0,  size: 0,                             accelerationContainer: instanceContainer.instance },
       { binding: 1,  size: pixelBuffer.byteLength,        buffer: pixelBuffer },
-      { binding: 2,  size: camera.buffer.byteLength,      buffer: camera.buffer },
-      { binding: 3,  size: accumulationBuffer.byteLength, buffer: accumulationBuffer },
-      { binding: 4,  size: attributeBuffer.byteLength,    buffer: attributeBuffer },
-      { binding: 5,  size: faceBuffer.byteLength,         buffer: faceBuffer },
-      { binding: 6,  size: instancesBuffer.byteLength,    buffer: instancesBuffer },
-      { binding: 7,  size: materialBuffer.byteLength,     buffer: materialBuffer },
-      { binding: 8,  size: lightsBuffer.byteLength,       buffer: lightsBuffer },
-      { binding: 9,  size: 0,                             sampler: textureSampler },
-      { binding: 10, size: 0,                             textureView: textureView },
+      { binding: 2,  size: accumulationBuffer.byteLength, buffer: accumulationBuffer },
+      { binding: 3,  size: camera.buffer.byteLength,      buffer: camera.buffer },
+      { binding: 4,  size: settingsBuffer.byteLength,     buffer: settingsBuffer },
+      { binding: 5,  size: attributeBuffer.byteLength,    buffer: attributeBuffer },
+      { binding: 6,  size: faceBuffer.byteLength,         buffer: faceBuffer },
+      { binding: 7,  size: instancesBuffer.byteLength,    buffer: instancesBuffer },
+      { binding: 8,  size: materialBuffer.byteLength,     buffer: materialBuffer },
+      { binding: 9,  size: lightsBuffer.byteLength,       buffer: lightsBuffer },
+      { binding: 10, size: 0,                             sampler: textureSampler },
+      { binding: 11, size: 0,                             textureView: textureView },
     ]
   });
 
@@ -294,6 +310,7 @@ Object.assign(global, glMatrix);
   let blitBindGroupLayout = device.createBindGroupLayout({
     bindings: [
       { binding: 0, type: "storage-buffer", visibility: GPUShaderStage.FRAGMENT },
+      { binding: 1, type: "uniform-buffer", visibility: GPUShaderStage.FRAGMENT },
     ]
   });
 
@@ -301,6 +318,7 @@ Object.assign(global, glMatrix);
     layout: blitBindGroupLayout,
     bindings: [
       { binding: 0, size: pixelBuffer.byteLength, buffer: pixelBuffer },
+      { binding: 1, size: settingsBuffer.byteLength, buffer: settingsBuffer },
     ]
   });
 
@@ -363,11 +381,16 @@ Object.assign(global, glMatrix);
 
   let delta = 0;
   let last = Date.now();
-  function onFrame(now = Date.now()) {
+  (function onFrame(now = Date.now()) {
     delta = (now - last) / 1e3;
     last = now;
 
     camera.update(delta);
+
+    // accumulation
+    if (camera.hasMoved) totalSampleCount = sampleCount;
+    else totalSampleCount += sampleCount;
+    settingsBuffer.setSubData(0, new Uint32Array([ sampleCount, totalSampleCount ]));
 
     let backBufferView = swapChain.getCurrentTextureView();
 
@@ -408,8 +431,6 @@ Object.assign(global, glMatrix);
     if (window.shouldClose()) return;
 
     setImmediate(() => onFrame());
-  };
-
-  setTimeout(() => onFrame(), 1e3 / 60);
+  })();
 
 })();

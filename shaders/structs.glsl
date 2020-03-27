@@ -24,14 +24,7 @@ struct ShadingData {
   vec3 base_color;
   float metallic;
   float specular;
-  float anisotropy;
   float roughness;
-  float specular_tint;
-  float sheen_tint;
-  float sheen;
-  float clearcoat_gloss;
-  float clearcoat;
-  float subsurface;
   float csw;
 };
 

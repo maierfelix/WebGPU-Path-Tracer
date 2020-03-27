@@ -7,6 +7,7 @@ const SETTINGS = {
 export default class Camera {
   constructor(opts = {}) {
     this.device = opts.device;
+    this.hasMoved = false;
     this.deltaMovement = { x: 0, y: 0 };
     this.viewMatrix = mat4.create();
     this.viewInverseMatrix = mat4.create();
@@ -23,12 +24,10 @@ export default class Camera {
       up: vec3.create()
     };
     this.buffer = this.device.createBuffer({
-      size: 90 * Float32Array.BYTES_PER_ELEMENT,
+      size: 84 * Float32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
     });
-    this.buffer.byteLength = 90 * Float32Array.BYTES_PER_ELEMENT;
-    this.sampleCount = 8;
-    this.totalSampleCount = this.sampleCount;
+    this.buffer.byteLength = 84 * Float32Array.BYTES_PER_ELEMENT;
     this.transforms.translation = vec3.fromValues(
       96, 68, 96
     );
@@ -47,8 +46,6 @@ Camera.prototype.update = function(delta) {
   let mPreviousViewInverse = this.previousViewInverseMatrix;
   let mPreviousProjectionInverse = this.previousProjectionInverseMatrix;
 
-  let {sampleCount, totalSampleCount} = this;
-
   let {translation, rotation, forward, up} = this.transforms;
 
   this.control(
@@ -64,15 +61,10 @@ Camera.prototype.update = function(delta) {
     delta
   );
 
-  let hasMoved = (
+  this.hasMoved = (
     !mat4.exactEquals(mViewInverse, mPreviousViewInverse) ||
     !mat4.exactEquals(mProjectionInverse, mPreviousProjectionInverse)
   );
-
-  // reset accumulation
-  if (hasMoved) this.totalSampleCount = this.sampleCount;
-  // increase accumulation
-  else this.totalSampleCount += this.sampleCount;
 
   // projection matrix
   {
@@ -119,11 +111,9 @@ Camera.prototype.update = function(delta) {
   deltaMovement.x *= 0.375;
   deltaMovement.y *= 0.375;
 
-  let dataBuf = new ArrayBuffer(88 * Float32Array.BYTES_PER_ELEMENT);
+  let dataBuf = new ArrayBuffer(buffer.byteLength);
   let dataF32 = new Float32Array(dataBuf);
   let dataU32 = new Uint32Array(dataBuf);
-
-  let lightCount = 1;
 
   let offset = 0;
   dataF32.set(forward, offset);                             offset += 4;
@@ -132,10 +122,6 @@ Camera.prototype.update = function(delta) {
   dataF32.set(mViewProjection, offset);                     offset += 16;
   dataF32.set(mPreviousViewInverse, offset);                offset += 16;
   dataF32.set(mPreviousProjectionInverse, offset);          offset += 16;
-  dataU32.set(new Uint32Array([sampleCount]), offset);      offset += 1;
-  dataU32.set(new Uint32Array([totalSampleCount]), offset); offset += 1;
-  dataU32.set(new Uint32Array([lightCount]), offset);       offset += 1;
-  dataU32.set(new Uint32Array([0]), offset);                offset += 1;
 
   buffer.setSubData(0, dataF32);
 };

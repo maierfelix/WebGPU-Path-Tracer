@@ -15,41 +15,48 @@ hitAttributeNV vec4 Hit;
 layout(location = 0) rayPayloadInNV RayPayload Ray;
 layout(location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
 
-layout (binding = 2) uniform Camera {
+layout (binding = 3) uniform CameraBuffer {
   vec4 forward;
   mat4 viewInverse;
   mat4 projectionInverse;
   mat4 viewProjection;
   mat4 previousViewInverse;
   mat4 previousProjectionInverse;
+} Camera;
+
+layout(binding = 4) uniform SettingsBuffer {
   uint sampleCount;
   uint totalSampleCount;
   uint lightCount;
+  uint screenWidth;
+  uint screenHeight;
   uint pad_0;
-} uCamera;
+  uint pad_1;
+  uint pad_2;
+} Settings;
 
-layout(binding = 4, std430) readonly buffer GeometryBuffer {
+layout(binding = 5, std430) readonly buffer AttributeBuffer {
   Vertex Vertices[];
 };
 
-layout(binding = 5, std430) readonly buffer FacesBuffer {
+layout(binding = 6, std430) readonly buffer FaceBuffer {
   uint Faces[];
 };
 
-layout(binding = 6, std140, row_major) readonly buffer InstanceBuffer {
+layout(binding = 7, std140, row_major) readonly buffer InstanceBuffer {
   Instance Instances[];
 };
 
-layout(binding = 7, std430) readonly buffer MaterialBuffer {
+layout(binding = 8, std430) readonly buffer MaterialBuffer {
   Material Materials[];
 };
 
-layout(binding = 8, std430) readonly buffer LightBuffer {
+layout(binding = 9, std430) readonly buffer LightBuffer {
   Light Lights[];
 };
 
-layout(binding = 9) uniform sampler TextureSampler;
-layout(binding = 10) uniform texture2DArray TextureArray;
+layout(binding = 10) uniform sampler TextureSampler;
+layout(binding = 11) uniform texture2DArray TextureArray;
 
 vec3 DirectLight(const uint instanceId, in vec3 normal) {
   vec3 Lo = vec3(0.0);
@@ -70,7 +77,7 @@ vec3 DirectLight(const uint instanceId, in vec3 normal) {
 
   const vec3 lightDir = directionAndPdf.xyz;
   const float lightPdf = directionAndPdf.w;
-  const vec3 powerPdf = lightEmission * uCamera.lightCount;
+  const vec3 powerPdf = lightEmission * Settings.lightCount;
 
   const vec3 N = normal;
   const vec3 V = -gl_WorldRayDirectionNV;
@@ -131,11 +138,11 @@ void main() {
   const vec2 metalRoughness = pow(vec2(tex2.r, tex2.g), vec2(INV_GAMMA));
   // material emission
   const vec3 emission = tex3;
-/*
+
   const vec3 W = vec3(0.2125, 0.7154, 0.0721);
   vec3 intensity = vec3(dot(color, W));
-  color = mix(intensity, color, 1.25);
-*/
+  color = mix(intensity, color, 1.275);
+
   uint seed = Ray.seed;
   float t = gl_HitTNV;
 
@@ -148,19 +155,10 @@ void main() {
   shading.metallic = clamp(metalRoughness.r + material.metalness, 0.001, 0.999);
   shading.specular = material.specular;
   shading.roughness = clamp(metalRoughness.g + material.roughness, 0.001, 0.999);
-  shading.anisotropy = 0.001;
-  shading.specular_tint = 0.001;
-  shading.sheen_tint = 0.001;
-  shading.sheen = 0.001;
-  shading.clearcoat_gloss = 0.001;
-  shading.clearcoat = 0.001;
-  shading.subsurface = 0.001;
-
   {
     const vec3 cd_lin = shading.base_color;
     const float cd_lum = dot(cd_lin, vec3(0.3, 0.6, 0.1));
-    const vec3 c_tint = cd_lum > 0.0 ? (cd_lin / cd_lum) : vec3(1);
-    const vec3 c_spec0 = mix((1.0 - shading.specular * 0.3) * mix(vec3(1), c_tint, shading.specular_tint), cd_lin, shading.metallic);
+    const vec3 c_spec0 = mix(shading.specular * vec3(0.3), cd_lin, shading.metallic);
     const float cs_lum = dot(c_spec0, vec3(0.3, 0.6, 0.1));
     const float cs_w = cs_lum / (cs_lum + (1.0 - shading.metallic) * cd_lum);
     shading.csw = cs_w;

@@ -15,48 +15,55 @@ layout(binding = 1, std140) buffer PixelBuffer {
   vec4 pixels[];
 } pixelBuffer;
 
-layout (binding = 2) uniform Camera {
+layout(binding = 2, std140) buffer AccumulationBuffer {
+  vec4 pixels[];
+} accumulationBuffer;
+
+layout (binding = 3) uniform CameraBuffer {
   vec4 forward;
   mat4 viewInverse;
   mat4 projectionInverse;
   mat4 viewProjection;
   mat4 previousViewInverse;
   mat4 previousProjectionInverse;
+} Camera;
+
+layout(binding = 4) uniform SettingsBuffer {
   uint sampleCount;
   uint totalSampleCount;
-} uCamera;
+  uint lightCount;
+  uint screenWidth;
+  uint screenHeight;
+  uint pad_0;
+  uint pad_1;
+  uint pad_2;
+} Settings;
 
-layout(binding = 3, std140) buffer AccumulationBuffer {
-  vec4 pixels[];
-} accumulationBuffer;
-
-layout(binding = 4, std430) readonly buffer GeometryBuffer {
+layout(binding = 5, std430) readonly buffer AttributeBuffer {
   Vertex Vertices[];
 };
 
-layout(binding = 5, std430) readonly buffer FacesBuffer {
+layout(binding = 6, std430) readonly buffer FaceBuffer {
   uint Faces[];
 };
 
-layout(binding = 6, std140, row_major) readonly buffer InstanceBuffer {
+layout(binding = 7, std140, row_major) readonly buffer InstanceBuffer {
   Instance Instances[];
 };
 
-layout(binding = 7, std430) readonly buffer MaterialBuffer {
+layout(binding = 8, std430) readonly buffer MaterialBuffer {
   Material Materials[];
 };
 
-layout(binding = 8, std430) readonly buffer LightBuffer {
+layout(binding = 9, std430) readonly buffer LightBuffer {
   Light Lights[];
 };
 
 const float aperture = 0.0875;
 const float focusDistance = 22.0;
 
-const uint lightCount = 1;
-
 LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 lightDirection, out float lightDistance) {
-  const uint lightIndex = 1 + uint(Randf01(seed) * lightCount);
+  const uint lightIndex = 1 + uint(Randf01(seed) * Settings.lightCount);
   const uint geometryInstanceId = Lights[nonuniformEXT(lightIndex)].instanceIndex;
   const Instance instance = Instances[nonuniformEXT(geometryInstanceId)];
 
@@ -112,11 +119,11 @@ void main() {
   const ivec2 resolution = ivec2(gl_LaunchSizeNV.xy);
   const uint pixelIndex = ipos.y * resolution.x + ipos.x;
 
-  const uint sampleCount = uCamera.sampleCount;
+  const uint sampleCount = Settings.sampleCount;
   const uint bounceCount = 4;
-  const uint totalSampleCount = uCamera.totalSampleCount;
+  const uint totalSampleCount = Settings.totalSampleCount;
 
-  Ray.seed = Tea(Tea(ipos.x, ipos.y), uCamera.totalSampleCount);
+  Ray.seed = Tea(Tea(ipos.x, ipos.y), Settings.totalSampleCount);
 
   const float tMin = 0.01;
   const float tMax = 8192.0;
@@ -124,8 +131,8 @@ void main() {
   const uint cullMask = 0x80; // -> GeometryLayout.mask
 
   // in case camera UBO isn't staged
-  const mat4 mViewInverse = uCamera.viewInverse;
-  const mat4 mProjectionInverse = uCamera.projectionInverse;
+  const mat4 mViewInverse = Camera.viewInverse;
+  const mat4 mProjectionInverse = Camera.projectionInverse;
 
   vec3 pixelColor = vec3(0);
   for (uint ss = 0; ss < sampleCount; ++ss) {
@@ -176,12 +183,12 @@ void main() {
   };
   pixelColor = max(vec3(0), pixelColor);
 
-  const bool accumulate = uCamera.sampleCount != uCamera.totalSampleCount;
+  const bool accumulate = Settings.sampleCount != Settings.totalSampleCount;
   const vec3 accumulatedColor = accumulationBuffer.pixels[pixelIndex].rgb * float(accumulate) + pixelColor;
-  pixelColor = accumulatedColor * (1.0 / uCamera.totalSampleCount);
+  pixelColor = accumulatedColor * (1.0 / Settings.totalSampleCount);
   accumulationBuffer.pixels[pixelIndex].rgb = accumulatedColor;
 
-  pixelColor = Uncharted2ToneMapping(pixelColor * (1.0 / uCamera.sampleCount));
+  pixelColor = Uncharted2ToneMapping(pixelColor * (1.0 / Settings.sampleCount));
 
   pixelBuffer.pixels[pixelIndex] = vec4(pow(pixelColor, vec3(1.0 / 2.2)), 1);
 }
