@@ -137,11 +137,11 @@ void main() {
   // material metalness/roughness
   const vec2 metalRoughness = pow(vec2(tex2.r, tex2.g), vec2(INV_GAMMA));
   // material emission
-  const vec3 emission = tex3;
+  const vec3 emission = pow(tex3, vec3(GAMMA)) * material.emissionIntensity;
 
   const vec3 W = vec3(0.2125, 0.7154, 0.0721);
   vec3 intensity = vec3(dot(color, W));
-  color = mix(intensity, color, 1.275);
+  color = mix(intensity, color, 1.25);
 
   uint seed = Ray.seed;
   float t = gl_HitTNV;

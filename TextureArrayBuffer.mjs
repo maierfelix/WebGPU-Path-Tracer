@@ -1,7 +1,3 @@
-import {
-  readPNGFile
-} from "./utils.mjs"
-
 export default class TextureArrayBuffer {
   constructor({ device, images } = _) {
     this.device = device || null;

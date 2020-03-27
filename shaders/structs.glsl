@@ -45,11 +45,11 @@ struct Offset {
 
 struct Material {
   vec3 color;
-  float pad_0;
   float metalness;
   float roughness;
   float specular;
   float textureScaling;
+  float emissionIntensity;
   uint albedoIndex;
   uint normalIndex;
   uint emissionIndex;

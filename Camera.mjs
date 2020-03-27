@@ -1,3 +1,7 @@
+import {
+  fixateToZero
+} from "./utils.mjs";
+
 const SETTINGS = {
   fieldOfView: Math.tan(70 * Math.PI / 360),
   zNear: 1.0,
@@ -108,8 +112,8 @@ Camera.prototype.update = function(delta) {
     mat4.multiply(mViewProjection, mProjection, mView);
   }
 
-  deltaMovement.x *= 0.375;
-  deltaMovement.y *= 0.375;
+  deltaMovement.x = fixateToZero(deltaMovement.x * 0.125, 0.01);
+  deltaMovement.y = fixateToZero(deltaMovement.y * 0.125, 0.01);
 
   let dataBuf = new ArrayBuffer(buffer.byteLength);
   let dataF32 = new Float32Array(dataBuf);

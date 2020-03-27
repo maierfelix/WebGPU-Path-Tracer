@@ -81,16 +81,16 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
     let {color} = material;
     let {metalness, roughness, specular} = material;
     let {albedo, normal, emission, metalRoughness} = material;
-    let {textureScaling} = material;
+    let {textureScaling, emissionIntensity} = material;
     let offset = ii * materialBufferStride;
     materialBufferDataF32[offset++] = Math.pow(color[0] / 255.0, 1.0 / 2.2);
     materialBufferDataF32[offset++] = Math.pow(color[1] / 255.0, 1.0 / 2.2);
     materialBufferDataF32[offset++] = Math.pow(color[2] / 255.0, 1.0 / 2.2);
-    materialBufferDataF32[offset++] = 0.0; // padding
     materialBufferDataF32[offset++] = clamp(parseFloat(metalness), -0.999, 0.999);
     materialBufferDataF32[offset++] = clamp(parseFloat(roughness), -0.999, 0.999);
     materialBufferDataF32[offset++] = clamp(parseFloat(specular),  -0.999, 0.999);
     materialBufferDataF32[offset++] = textureScaling !== void 0 ? textureScaling : 1.0;
+    materialBufferDataF32[offset++] = emissionIntensity !== void 0 ? emissionIntensity : 1.0;
     materialBufferDataU32[offset++] = albedo ? images.indexOf(albedo) + 1 : 0;
     materialBufferDataU32[offset++] = normal ? images.indexOf(normal) + 1 : 0;
     materialBufferDataU32[offset++] = emission ? images.indexOf(emission) + 1 : 0;
@@ -142,7 +142,7 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
     let instance = instances[ii];
     let {material, geometry, transform} = instance;
     let instanceEntry = {};
-    instanceEntry.flags = GPURayTracingAccelerationInstanceFlag.TRIANGLE_CULL_DISABLE;
+    instanceEntry.flags = GPURayTracingAccelerationInstanceFlag.NONE;
     instanceEntry.mask = 0xFF;
     instanceEntry.instanceId = ii;
     instanceEntry.instanceOffset = 0x0;

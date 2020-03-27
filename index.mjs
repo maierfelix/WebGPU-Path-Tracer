@@ -54,31 +54,22 @@ Object.assign(global, glMatrix);
   });
 
   let images = [
-    readImageFile(`assets/textures/meetmat/02_Body_Base_Color.png`),
-    readImageFile(`assets/textures/meetmat/02_Body_Normal_DirectX.png`),
-    readImageFile(`assets/textures/meetmat/02_Body_MetallicRoughness.png`),
-    readImageFile(`assets/textures/meetmat/01_Head_Base_Color.png`),
-    readImageFile(`assets/textures/meetmat/01_Head_Normal_DirectX.png`),
-    readImageFile(`assets/textures/meetmat/01_Head_MetallicRoughness.png`),
-    readImageFile(`assets/textures/stringy-marbel/stringy_marble_albedo.png`),
-    readImageFile(`assets/textures/stringy-marbel/stringy_marble_Normal-dx.png`),
-    readImageFile(`assets/textures/stringy-marbel/stringy_marble_metallic_roughness.png`)
+    readImageFile(`assets/textures/Facade/facade_col.png`),
+    readImageFile(`assets/textures/Facade/facade_normal.png`),
+    readImageFile(`assets/textures/Facade/facade_metal_roughness.png`),
+    readImageFile(`assets/textures/Facade/facade_emissive.png`),
+    readImageFile(`assets/textures/Fabric19/Fabric19_col.jpg`),
+    readImageFile(`assets/textures/Fabric19/Fabric19_nrm.jpg`),
+    readImageFile(`assets/textures/Fabric19/Fabric19_met_rgh.jpg`)
   ];
 
   let geometries = [
     tolw.loadObj(readBinaryFile(`assets/models/plane.obj`)),
-    tolw.loadObj(readBinaryFile(`assets/models/box.obj`)),
+    tolw.loadObj(readBinaryFile(`assets/models/sphere.obj`)),
     tolw.loadObj(readBinaryFile(`assets/models/meetmat/body.obj`)),
     tolw.loadObj(readBinaryFile(`assets/models/meetmat/head.obj`)),
+    tolw.loadObj(readBinaryFile(`assets/models/box.obj`)),
   ];
-
-  let vertexShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/screen.vert`) });
-  let fragmentShaderModule = device.createShaderModule({      code: loadShaderFile(`shaders/screen.frag`) });
-  let rayGenShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/ray-generation.rgen`) });
-  let rayCHitModule = device.createShaderModule({             code: loadShaderFile(`shaders/ray-closest-hit.rchit`) });
-  let rayMissShaderModule = device.createShaderModule({       code: loadShaderFile(`shaders/ray-miss.rmiss`) });
-  let rayShadowCHitShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-closest-hit.rchit`) });
-  let rayShadowMissShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-miss.rmiss`) });
 
   let geometryBuffer = new GeometryBuffer({ device, geometries });
 
@@ -90,105 +81,112 @@ Object.assign(global, glMatrix);
     {
       color: [0, 0, 0],
       metalness: 0.001,
-      roughness: 0.028,
-      specular: 0.0317,
-      albedo: images[6],
-      normal: images[7],
-      metalRoughness: images[8],
-      textureScaling: 8.0,
+      roughness: 0.068,
+      specular: 0.0117,
+      albedo: images[4],
+      normal: images[5],
+      metalRoughness: images[6],
+      textureScaling: 5.5,
     },
     {
       color: [0, 0, 0],
-      metalness: 0.3,
-      roughness: -0.2,
+      metalness: 0.5,
+      roughness: -0.1634,
       specular: 0.95,
       albedo: images[0],
       normal: images[1],
       metalRoughness: images[2],
+      emission: images[3],
+      emissionIntensity: 8.0,
     },
     {
       color: [0, 0, 0],
-      metalness: 0.3,
-      roughness: -0.2,
+      metalness: 0.5,
+      roughness: -0.1634,
       specular: 0.95,
-      albedo: images[3],
-      normal: images[4],
-      metalRoughness: images[5],
+      albedo: images[0],
+      normal: images[1],
+      metalRoughness: images[2],
+      emission: images[3],
+      emissionIntensity: 3.0,
     },
     {
-      color: [21768, 22832, 21768],
+      color: [22100, 22500, 22000],
+    },
+    {
+      color: [46000, 49000, 43000],
     }
   ];
 
   let instances = [
-    // box
+    // body
+    {
+      material: materials[1],
+      geometry: bottomContainers[2],
+      transform: {
+        translation: { x: -32, y: 0, z: 128 },
+        rotation: { x: 0, y: -80, z: 0 },
+        scale: { x: 512, y: 512, z: 512 }
+      }
+    },
+    // head
+    {
+      material: materials[2],
+      geometry: bottomContainers[3],
+      transform: {
+        translation: { x: -32, y: 0, z: 128 },
+        rotation: { x: 0, y: -80, z: 0 },
+        scale: { x: 512, y: 512, z: 512 }
+      }
+    },
+    // body
+    {
+      material: materials[1],
+      geometry: bottomContainers[2],
+      transform: {
+        translation: { x: 64, y: 0, z: 128 },
+        rotation: { x: 0, y: 180, z: 0 },
+        scale: { x: 512, y: 512, z: 512 }
+      }
+    },
+    // head
+    {
+      material: materials[2],
+      geometry: bottomContainers[3],
+      transform: {
+        translation: { x: 64, y: 0, z: 128 },
+        rotation: { x: 0, y: 180, z: 0 },
+        scale: { x: 512, y: 512, z: 512 }
+      }
+    },
+    // body
+    {
+      material: materials[1],
+      geometry: bottomContainers[2],
+      transform: {
+        translation: { x: 32, y: 0, z: 256 - 32 },
+        rotation: { x: 0, y: 180 + 70, z: 0 },
+        scale: { x: 512, y: 512, z: 512 }
+      }
+    },
+    // head
+    {
+      material: materials[2],
+      geometry: bottomContainers[3],
+      transform: {
+        translation: { x: 32, y: 0, z: 256 - 32 },
+        rotation: { x: 0, y: 180 + 70, z: 0 },
+        scale: { x: 512, y: 512, z: 512 }
+      }
+    },
+    // floor
     {
       material: materials[0],
-      geometry: bottomContainers[1],
+      geometry: bottomContainers[4],
       transform: {
         translation: { x: 0, y: 384, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
         scale: { x: 384, y: 384, z: 384 }
-      }
-    },
-    // body
-    {
-      material: materials[1],
-      geometry: bottomContainers[2],
-      transform: {
-        translation: { x: -32, y: 0, z: 128 },
-        rotation: { x: 0, y: -80, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // head
-    {
-      material: materials[2],
-      geometry: bottomContainers[3],
-      transform: {
-        translation: { x: -32, y: 0, z: 128 },
-        rotation: { x: 0, y: -80, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // body
-    {
-      material: materials[1],
-      geometry: bottomContainers[2],
-      transform: {
-        translation: { x: 64, y: 0, z: 128 },
-        rotation: { x: 0, y: 180, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // head
-    {
-      material: materials[2],
-      geometry: bottomContainers[3],
-      transform: {
-        translation: { x: 64, y: 0, z: 128 },
-        rotation: { x: 0, y: 180, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // body
-    {
-      material: materials[1],
-      geometry: bottomContainers[2],
-      transform: {
-        translation: { x: 32, y: 0, z: 256 - 32 },
-        rotation: { x: 0, y: 180 + 70, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // head
-    {
-      material: materials[2],
-      geometry: bottomContainers[3],
-      transform: {
-        translation: { x: 32, y: 0, z: 256 - 32 },
-        rotation: { x: 0, y: 180 + 70, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
       }
     },
     // light plane
@@ -196,14 +194,27 @@ Object.assign(global, glMatrix);
       material: materials[3],
       geometry: bottomContainers[0],
       transform: {
-        translation: { x: 0, y: 64, z: 256 + 16 },
-        rotation: { x: 90, y: 0, z: 0 },
-        scale: { x: 128, y: 14, z: 0.0001 }
+        translation: { x: 0, y: 768 - 1, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 32, y: 32, z: 32 }
+      }
+    },
+    // light plane
+    {
+      material: materials[4],
+      geometry: bottomContainers[0],
+      transform: {
+        translation: { x: 0, y: 128, z: 256 + 48 },
+        rotation: { x: 116, y: 0, z: 0 },
+        scale: { x: 32, y: 8, z: 8 }
       }
     }
   ];
 
   let lights = [
+    {
+      instance: instances[instances.length - 2]
+    },
     {
       instance: instances[instances.length - 1]
     }
@@ -223,7 +234,7 @@ Object.assign(global, glMatrix);
   let lightBuffer = new LightBuffer({ device, instances, lights });
   let lightsBuffer = lightBuffer.getLightBuffer();
 
-  let sampleCount = 4;
+  let sampleCount = 8;
   let totalSampleCount = sampleCount;
 
   let pixelBufferByteLength = window.width * window.height * 4 * Float32Array.BYTES_PER_ELEMENT;
@@ -245,6 +256,14 @@ Object.assign(global, glMatrix);
     window.height
   ]));
 
+  let vertexShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/screen.vert`) });
+  let fragmentShaderModule = device.createShaderModule({      code: loadShaderFile(`shaders/screen.frag`) });
+  let rayGenShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/ray-generation.rgen`) });
+  let rayCHitModule = device.createShaderModule({             code: loadShaderFile(`shaders/ray-closest-hit.rchit`) });
+  let rayMissShaderModule = device.createShaderModule({       code: loadShaderFile(`shaders/ray-miss.rmiss`) });
+  let rayShadowCHitShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-closest-hit.rchit`) });
+  let rayShadowMissShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-miss.rmiss`) });
+
   let shaderBindingTable = device.createRayTracingShaderBindingTable({
     stages: [
       { module: rayGenShaderModule,        stage: GPUShaderStage.RAY_GENERATION },
@@ -264,7 +283,7 @@ Object.assign(global, glMatrix);
 
   let rtBindGroupLayout = device.createBindGroupLayout({
     bindings: [
-      { binding: 0,  type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION },
+      { binding: 0,  type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 1,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
       { binding: 2,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
       { binding: 3,  type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
