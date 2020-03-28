@@ -12,8 +12,8 @@ ShadingData shading;
 
 hitAttributeNV vec4 Hit;
 
-layout(location = 0) rayPayloadInNV RayPayload Ray;
-layout(location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
+layout (location = 0) rayPayloadInNV RayPayload Ray;
+layout (location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
 
 layout (binding = 3) uniform CameraBuffer {
   vec4 forward;
@@ -22,9 +22,13 @@ layout (binding = 3) uniform CameraBuffer {
   mat4 viewProjection;
   mat4 previousViewInverse;
   mat4 previousProjectionInverse;
+  float aperture;
+  float focusDistance;
+  float zNear;
+  float zFar;
 } Camera;
 
-layout(binding = 4) uniform SettingsBuffer {
+layout (binding = 4) uniform SettingsBuffer {
   uint sampleCount;
   uint totalSampleCount;
   uint lightCount;
@@ -35,28 +39,28 @@ layout(binding = 4) uniform SettingsBuffer {
   uint pad_2;
 } Settings;
 
-layout(binding = 5, std430) readonly buffer AttributeBuffer {
+layout (binding = 5, std430) readonly buffer AttributeBuffer {
   Vertex Vertices[];
 };
 
-layout(binding = 6, std430) readonly buffer FaceBuffer {
+layout (binding = 6, std430) readonly buffer FaceBuffer {
   uint Faces[];
 };
 
-layout(binding = 7, std140, row_major) readonly buffer InstanceBuffer {
+layout (binding = 7, std140, row_major) readonly buffer InstanceBuffer {
   Instance Instances[];
 };
 
-layout(binding = 8, std430) readonly buffer MaterialBuffer {
+layout (binding = 8, std430) readonly buffer MaterialBuffer {
   Material Materials[];
 };
 
-layout(binding = 9, std430) readonly buffer LightBuffer {
+layout (binding = 9, std430) readonly buffer LightBuffer {
   Light Lights[];
 };
 
-layout(binding = 10) uniform sampler TextureSampler;
-layout(binding = 11) uniform texture2DArray TextureArray;
+layout (binding = 10) uniform sampler TextureSampler;
+layout (binding = 11) uniform texture2DArray TextureArray;
 
 vec3 DirectLight(const uint instanceId, in vec3 normal) {
   vec3 Lo = vec3(0.0);

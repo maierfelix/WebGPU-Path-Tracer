@@ -5,7 +5,7 @@
 
 #include "utils.glsl"
 
-layout(location = 1) rayPayloadInNV ShadowRayPayload ShadowRay;
+layout (location = 1) rayPayloadInNV ShadowRayPayload ShadowRay;
 
 void main() {
   ShadowRay.hit = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_RayTmaxNV;

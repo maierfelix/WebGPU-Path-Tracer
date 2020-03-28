@@ -5,7 +5,7 @@
 
 #include "utils.glsl"
 
-layout(location = 1) rayPayloadInNV ShadowRayPayload ShadowRay;
+layout (location = 1) rayPayloadInNV ShadowRayPayload ShadowRay;
 
 void main() {
   ShadowRay.hit = vec3(0);

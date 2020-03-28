@@ -9,11 +9,11 @@ export default class TextureArrayBuffer {
 };
 
 TextureArrayBuffer.prototype.getTextureSampler = function() {
-  return this.sampler;
+  return this.sampler || null;
 };
 
 TextureArrayBuffer.prototype.getTextureView = function() {
-  return this.textureView;
+  return this.textureView || null;
 };
 
 TextureArrayBuffer.prototype.init = function(images) {

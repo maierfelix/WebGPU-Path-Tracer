@@ -6,7 +6,7 @@
 
 #include "utils.glsl"
 
-layout(location = 0) rayPayloadInNV RayPayload Ray;
+layout (location = 0) rayPayloadInNV RayPayload Ray;
 
 void main() {
   // gradient based env

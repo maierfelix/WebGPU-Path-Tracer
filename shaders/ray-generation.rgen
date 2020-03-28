@@ -6,16 +6,16 @@
 
 #include "utils.glsl"
 
-layout(location = 0) rayPayloadNV RayPayload Ray;
-layout(location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
+layout (location = 0) rayPayloadNV RayPayload Ray;
+layout (location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
 
-layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+layout (binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 
-layout(binding = 1, std140) buffer PixelBuffer {
+layout (binding = 1, std140) buffer PixelBuffer {
   vec4 pixels[];
 } pixelBuffer;
 
-layout(binding = 2, std140) buffer AccumulationBuffer {
+layout (binding = 2, std140) buffer AccumulationBuffer {
   vec4 pixels[];
 } accumulationBuffer;
 
@@ -26,9 +26,13 @@ layout (binding = 3) uniform CameraBuffer {
   mat4 viewProjection;
   mat4 previousViewInverse;
   mat4 previousProjectionInverse;
+  float aperture;
+  float focusDistance;
+  float zNear;
+  float zFar;
 } Camera;
 
-layout(binding = 4) uniform SettingsBuffer {
+layout (binding = 4) uniform SettingsBuffer {
   uint sampleCount;
   uint totalSampleCount;
   uint lightCount;
@@ -39,28 +43,25 @@ layout(binding = 4) uniform SettingsBuffer {
   uint pad_2;
 } Settings;
 
-layout(binding = 5, std430) readonly buffer AttributeBuffer {
+layout (binding = 5, std430) readonly buffer AttributeBuffer {
   Vertex Vertices[];
 };
 
-layout(binding = 6, std430) readonly buffer FaceBuffer {
+layout (binding = 6, std430) readonly buffer FaceBuffer {
   uint Faces[];
 };
 
-layout(binding = 7, std140, row_major) readonly buffer InstanceBuffer {
+layout (binding = 7, std140, row_major) readonly buffer InstanceBuffer {
   Instance Instances[];
 };
 
-layout(binding = 8, std430) readonly buffer MaterialBuffer {
+layout (binding = 8, std430) readonly buffer MaterialBuffer {
   Material Materials[];
 };
 
-layout(binding = 9, std430) readonly buffer LightBuffer {
+layout (binding = 9, std430) readonly buffer LightBuffer {
   Light Lights[];
 };
-
-const float aperture = 0.0875;
-const float focusDistance = 22.0;
 
 LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 lightDirection, out float lightDistance) {
   const uint lightIndex = 1 + uint(Randf01(seed) * Settings.lightCount);
@@ -125,31 +126,24 @@ void main() {
 
   Ray.seed = Tea(Tea(ipos.x, ipos.y), Settings.totalSampleCount);
 
-  const float tMin = 0.01;
-  const float tMax = 8192.0;
-
-  const uint cullMask = 0x80; // -> GeometryLayout.mask
-
-  // in case camera UBO isn't staged
-  const mat4 mViewInverse = Camera.viewInverse;
-  const mat4 mProjectionInverse = Camera.projectionInverse;
+  const uint cullMask = 0x80;
 
   vec3 pixelColor = vec3(0);
   for (uint ss = 0; ss < sampleCount; ++ss) {
-    const vec2 offset = aperture / 2.0 * RandInUnitDisk(Ray.seed);
+    const vec2 offset = Camera.aperture / 2.0 * RandInUnitDisk(Ray.seed);
     const vec2 pixel = vec2(ipos.x + Randf01(Ray.seed), ipos.y + Randf01(Ray.seed));
     const vec2 uv = (pixel / gl_LaunchSizeNV.xy) * 2.0 - 1.0;
 
-    vec4 origin = mViewInverse * vec4(offset, 0, 1);
-    vec4 target = mProjectionInverse * (vec4(uv.x, uv.y, 1, 1));
-    vec4 direction = mViewInverse * vec4(normalize(target.xyz * focusDistance - vec3(offset, 0)), 0);
+    vec4 origin = Camera.viewInverse * vec4(offset, 0, 1);
+    vec4 target = Camera.projectionInverse * (vec4(uv.x, uv.y, 1, 1));
+    vec4 direction = Camera.viewInverse * vec4(normalize(target.xyz * Camera.focusDistance - vec3(offset, 0)), 0);
 
     vec3 radiance = vec3(0);
     Ray.throughput = vec4(1);
     for (uint bb = 0; bb < bounceCount; ++bb) {
       // shoot initial ray
       // this ray returns us the initial closest-hit position on a surface
-      traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 1, 1, 1, origin.xyz, tMin, direction.xyz, tMax, 1);
+      traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 1, 1, 1, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 1);
       vec3 surfacePosition = ShadowRay.hit;
       // ray missed everything
       //bool initialMiss = ShadowRay.shadowed;
@@ -167,7 +161,7 @@ void main() {
 
       // execute the shading
       // use callable shader for this?
-      traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 0, 0, 0, origin.xyz, tMin, direction.xyz, tMax, 0);
+      traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
 
       radiance += Ray.radianceAndDistance.rgb;
 

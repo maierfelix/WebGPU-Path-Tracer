@@ -2,12 +2,6 @@ import {
   fixateToZero
 } from "./utils.mjs";
 
-const SETTINGS = {
-  fieldOfView: Math.tan(70 * Math.PI / 360),
-  zNear: 1.0,
-  zFar: 8192.0
-};
-
 export default class Camera {
   constructor(opts = {}) {
     this.device = opts.device;
@@ -28,18 +22,38 @@ export default class Camera {
       up: vec3.create()
     };
     this.buffer = this.device.createBuffer({
-      size: 84 * Float32Array.BYTES_PER_ELEMENT,
+      size: 90 * Float32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
     });
-    this.buffer.byteLength = 84 * Float32Array.BYTES_PER_ELEMENT;
+    this.buffer.byteLength = 90 * Float32Array.BYTES_PER_ELEMENT;
     this.transforms.translation = vec3.fromValues(
       96, 68, 96
     );
+    this.settings = {
+      sampleCount: 8,
+      totalSampleCount: 0,
+      aperture: 0.125,
+      focusDistance: 32.0,
+      fieldOfView: Math.tan(70 * Math.PI / 360),
+      zNear: 0.01,
+      zFar: 8192.0
+    };
+    this.resetAccumulation();
   }
 };
 
+Camera.prototype.resetAccumulation = function() {
+  let {settings} = this;
+  settings.totalSampleCount = settings.sampleCount;
+};
+
+Camera.prototype.increaseAccumulation = function() {
+  let {settings} = this;
+  settings.totalSampleCount += settings.sampleCount;
+};
+
 Camera.prototype.update = function(delta) {
-  let {buffer, deltaMovement} = this;
+  let {settings, buffer, deltaMovement} = this;
 
   let mView = this.viewMatrix;
   let mViewInverse = this.viewInverseMatrix;
@@ -76,10 +90,10 @@ Camera.prototype.update = function(delta) {
     mat4.identity(mProjection);
     mat4.perspective(
       mProjection,
-      SETTINGS.fieldOfView,
+      settings.fieldOfView,
       aspect,
-      SETTINGS.zNear,
-      SETTINGS.zFar
+      settings.zNear,
+      settings.zFar
     );
   }
   // projection-inverse matrix
@@ -120,12 +134,16 @@ Camera.prototype.update = function(delta) {
   let dataU32 = new Uint32Array(dataBuf);
 
   let offset = 0;
-  dataF32.set(forward, offset);                             offset += 4;
-  dataF32.set(mViewInverse, offset);                        offset += 16;
-  dataF32.set(mProjectionInverse, offset);                  offset += 16;
-  dataF32.set(mViewProjection, offset);                     offset += 16;
-  dataF32.set(mPreviousViewInverse, offset);                offset += 16;
-  dataF32.set(mPreviousProjectionInverse, offset);          offset += 16;
+  dataF32.set(forward, offset);                                    offset += 4;
+  dataF32.set(mViewInverse, offset);                               offset += 16;
+  dataF32.set(mProjectionInverse, offset);                         offset += 16;
+  dataF32.set(mViewProjection, offset);                            offset += 16;
+  dataF32.set(mPreviousViewInverse, offset);                       offset += 16;
+  dataF32.set(mPreviousProjectionInverse, offset);                 offset += 16;
+  dataF32.set(new Float32Array([settings.aperture]), offset);      offset += 1;
+  dataF32.set(new Float32Array([settings.focusDistance]), offset); offset += 1;
+  dataF32.set(new Float32Array([settings.zNear]), offset);         offset += 1;
+  dataF32.set(new Float32Array([settings.zFar]), offset);          offset += 1;
 
   buffer.setSubData(0, dataF32);
 };

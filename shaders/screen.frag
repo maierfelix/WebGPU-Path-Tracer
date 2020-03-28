@@ -4,11 +4,11 @@
 layout (location = 0) in vec2 uv;
 layout (location = 0) out vec4 outColor;
 
-layout(binding = 0, std140) buffer PixelBuffer {
+layout (binding = 0, std140) buffer PixelBuffer {
   vec4 pixels[];
 } pixelBuffer;
 
-layout(binding = 1) uniform SettingsBuffer {
+layout (binding = 1) uniform SettingsBuffer {
   uint sampleCount;
   uint totalSampleCount;
   uint lightCount;
