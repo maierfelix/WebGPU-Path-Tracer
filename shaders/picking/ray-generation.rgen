@@ -14,8 +14,9 @@ layout(location = 0) rayPayloadNV RayPayload Ray;
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 
 layout(binding = 1, std140) buffer PickingBuffer {
-  vec4 data;
-} pickingBuffer;
+  vec4 inputData;
+  vec4 outputData;
+} Picking;
 
 layout(binding = 2) uniform CameraBuffer {
   vec4 forward;
@@ -30,12 +31,20 @@ layout(binding = 2) uniform CameraBuffer {
   float zFar;
 } Camera;
 
-void main() {
-  const ivec2 ipos = ivec2(gl_LaunchIDNV.xy);
-  const ivec2 resolution = ivec2(gl_LaunchSizeNV.xy);
+layout (binding = 3) uniform SettingsBuffer {
+  uint sampleCount;
+  uint totalSampleCount;
+  uint lightCount;
+  uint screenWidth;
+  uint screenHeight;
+  uint pad_0;
+  uint pad_1;
+  uint pad_2;
+} Settings;
 
-  const vec2 pixel = vec2(ipos);
-  const vec2 uv = (pixel / gl_LaunchSizeNV.xy) * 2.0 - 1.0;
+void main() {
+  const vec2 pixel = vec2(Picking.inputData.x, 768 - Picking.inputData.y);
+  const vec2 uv = (pixel / vec2(1280, 768)) * 2.0 - 1.0;
 
   vec4 origin = Camera.viewInverse * vec4(0, 0, 0, 1);
   vec4 target = Camera.projectionInverse * (vec4(uv.x, uv.y, 1, 1));
@@ -43,7 +52,7 @@ void main() {
 
   traceNV(topLevelAS, gl_RayFlagsOpaqueNV, 0xFF, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
 
-  pickingBuffer.data = vec4(
+  Picking.outputData = vec4(
     Ray.position.xyz,
     Ray.instanceId
   );

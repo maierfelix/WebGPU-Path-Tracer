@@ -3,8 +3,9 @@ import {
 } from "./utils.mjs";
 
 export default class Camera {
-  constructor(opts = {}) {
-    this.device = opts.device;
+  constructor({ device } = _) {
+    this.device = device || null;
+    this.buffer = null;
     this.hasMoved = false;
     this.deltaMovement = { x: 0, y: 0 };
     this.viewMatrix = mat4.create();
@@ -21,16 +22,11 @@ export default class Camera {
       forward: vec3.create(),
       up: vec3.create()
     };
-    this.buffer = this.device.createBuffer({
-      size: 90 * Float32Array.BYTES_PER_ELEMENT,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
-    });
-    this.buffer.byteLength = 90 * Float32Array.BYTES_PER_ELEMENT;
     this.transforms.translation = vec3.fromValues(
       96, 68, 96
     );
     this.settings = {
-      sampleCount: 8,
+      sampleCount: 1,
       totalSampleCount: 0,
       aperture: 0.125,
       focusDistance: 32.0,
@@ -38,8 +34,24 @@ export default class Camera {
       zNear: 0.01,
       zFar: 8192.0
     };
-    this.resetAccumulation();
+    this.init();
   }
+};
+
+Camera.prototype.getBuffer = function() {
+  return this.buffer || null;
+};
+
+Camera.prototype.init = function() {
+  let {device} = this;
+  let cameraBufferByteLength = 90 * Float32Array.BYTES_PER_ELEMENT;
+  let cameraBuffer = device.createBuffer({
+    size: cameraBufferByteLength,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
+  });
+  cameraBuffer.byteLength = cameraBufferByteLength;
+  this.buffer = cameraBuffer;
+  this.resetAccumulation();
 };
 
 Camera.prototype.resetAccumulation = function() {

@@ -15,6 +15,8 @@ hitAttributeNV vec4 Hit;
 layout (location = 0) rayPayloadInNV RayPayload Ray;
 layout (location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
 
+layout (binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+
 layout (binding = 3) uniform CameraBuffer {
   vec4 forward;
   mat4 viewInverse;
@@ -62,6 +64,58 @@ layout (binding = 9, std430) readonly buffer LightBuffer {
 layout (binding = 10) uniform sampler TextureSampler;
 layout (binding = 11) uniform texture2DArray TextureArray;
 
+LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 lightDirection, out float lightDistance) {
+  const uint lightIndex = 1 + uint(Randf01(seed) * Settings.lightCount);
+  const uint geometryInstanceId = Lights[nonuniformEXT(lightIndex)].instanceIndex;
+  const Instance instance = Instances[nonuniformEXT(geometryInstanceId)];
+
+  const uint faceIndex = instance.faceIndex + uint(Randf01(seed) * instance.faceCount);
+
+  const vec2 attribs = SampleTriangle(vec2(Randf01(seed), Randf01(seed)));
+
+  const Vertex v0 = Vertices[instance.vertexIndex + Faces[faceIndex + 0]];
+  const Vertex v1 = Vertices[instance.vertexIndex + Faces[faceIndex + 1]];
+  const Vertex v2 = Vertices[instance.vertexIndex + Faces[faceIndex + 2]];
+
+  const vec3 p0 = (instance.transformMatrix * vec4(v0.position.xyz, 1.0)).xyz;
+  const vec3 p1 = (instance.transformMatrix * vec4(v1.position.xyz, 1.0)).xyz;
+  const vec3 p2 = (instance.transformMatrix * vec4(v2.position.xyz, 1.0)).xyz;
+  const vec3 pw = blerp(attribs, p0, p1, p2);
+
+  const vec3 n0 = v0.normal.xyz;
+  const vec3 n1 = v1.normal.xyz;
+  const vec3 n2 = v2.normal.xyz;
+  const vec3 nw = normalize(mat3x3(instance.transformMatrix) * blerp(attribs, n0.xyz, n1.xyz, n2.xyz));
+
+  const float triangleArea = 0.5 * length(cross(p1 - p0, p2 - p0));
+
+  const vec3 lightSurfacePos = pw;
+  const vec3 lightEmission = Materials[instance.materialIndex].color;
+  const vec3 lightNormal = normalize(lightSurfacePos - surfacePos);
+
+  const vec3 lightPos = lightSurfacePos - surfacePos;
+  const float lightDist = length(lightPos);
+  const float lightDistSq = lightDist * lightDist;
+  const vec3 lightDir = lightPos / lightDist;
+
+  const float lightPdf = lightDistSq / (triangleArea * abs(dot(lightNormal, lightDir)));
+
+  const vec4 emissionAndGeometryId = vec4(
+    lightEmission, geometryInstanceId
+  );
+  const vec4 directionAndPdf = vec4(
+    lightDir, lightPdf
+  );
+
+  lightDirection = lightDir;
+  lightDistance = lightDist;
+
+  return LightSource(
+    emissionAndGeometryId,
+    directionAndPdf
+  );
+}
+
 vec3 DirectLight(const uint instanceId, in vec3 normal) {
   vec3 Lo = vec3(0.0);
 
@@ -103,6 +157,7 @@ vec3 DirectLight(const uint instanceId, in vec3 normal) {
 }
 
 void main() {
+  const vec3 surfacePosition = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_RayTmaxNV;
   const uint instanceId = gl_InstanceCustomIndexNV;
 
   const Instance instance = Instances[nonuniformEXT(instanceId)];
@@ -167,6 +222,17 @@ void main() {
     const float cs_w = cs_lum / (cs_lum + (1.0 - shading.metallic) * cd_lum);
     shading.csw = cs_w;
   }
+
+  // pick a random light source
+  // also returns a direction which we will shoot our shadow ray to
+  vec3 lightDirection = vec3(0);
+  float lightDistance = 0.0;
+  LightSource lightSource = PickRandomLightSource(Ray.seed, surfacePosition, lightDirection, lightDistance);
+  Ray.lightSource = lightSource;
+
+  // shoot the shadow ray
+  traceNV(topLevelAS, gl_RayFlagsTerminateOnFirstHitNV, 0xFF, 1, 1, 1, surfacePosition, EPSILON, lightDirection, lightDistance - EPSILON, 1);
+  Ray.shadowed = ShadowRay.shadowed;
 
   vec3 Lo = DirectLight(instanceId, normal);
   radiance += Lo * throughput;

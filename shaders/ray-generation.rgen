@@ -63,65 +63,13 @@ layout (binding = 9, std430) readonly buffer LightBuffer {
   Light Lights[];
 };
 
-LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 lightDirection, out float lightDistance) {
-  const uint lightIndex = 1 + uint(Randf01(seed) * Settings.lightCount);
-  const uint geometryInstanceId = Lights[nonuniformEXT(lightIndex)].instanceIndex;
-  const Instance instance = Instances[nonuniformEXT(geometryInstanceId)];
-
-  const uint faceIndex = instance.faceIndex + uint(Randf01(seed) * instance.faceCount);
-
-  const vec2 attribs = SampleTriangle(vec2(Randf01(seed), Randf01(seed)));
-
-  const Vertex v0 = Vertices[instance.vertexIndex + Faces[faceIndex + 0]];
-  const Vertex v1 = Vertices[instance.vertexIndex + Faces[faceIndex + 1]];
-  const Vertex v2 = Vertices[instance.vertexIndex + Faces[faceIndex + 2]];
-
-  const vec3 p0 = (instance.transformMatrix * vec4(v0.position.xyz, 1.0)).xyz;
-  const vec3 p1 = (instance.transformMatrix * vec4(v1.position.xyz, 1.0)).xyz;
-  const vec3 p2 = (instance.transformMatrix * vec4(v2.position.xyz, 1.0)).xyz;
-  const vec3 pw = blerp(attribs, p0, p1, p2);
-
-  const vec3 n0 = v0.normal.xyz;
-  const vec3 n1 = v1.normal.xyz;
-  const vec3 n2 = v2.normal.xyz;
-  const vec3 nw = normalize(mat3x3(instance.transformMatrix) * blerp(attribs, n0.xyz, n1.xyz, n2.xyz));
-
-  const float triangleArea = 0.5 * length(cross(p1 - p0, p2 - p0));
-
-  const vec3 lightSurfacePos = pw;
-  const vec3 lightEmission = Materials[instance.materialIndex].color;
-  const vec3 lightNormal = normalize(lightSurfacePos - surfacePos);
-
-  const vec3 lightPos = lightSurfacePos - surfacePos;
-  const float lightDist = length(lightPos);
-  const float lightDistSq = lightDist * lightDist;
-  const vec3 lightDir = lightPos / lightDist;
-
-  const float lightPdf = lightDistSq / (triangleArea * abs(dot(lightNormal, lightDir)));
-
-  const vec4 emissionAndGeometryId = vec4(
-    lightEmission, geometryInstanceId
-  );
-  const vec4 directionAndPdf = vec4(
-    lightDir, lightPdf
-  );
-
-  lightDirection = lightDir;
-  lightDistance = lightDist;
-
-  return LightSource(
-    emissionAndGeometryId,
-    directionAndPdf
-  );
-}
-
 void main() {
   const ivec2 ipos = ivec2(gl_LaunchIDNV.xy);
   const ivec2 resolution = ivec2(gl_LaunchSizeNV.xy);
   const uint pixelIndex = ipos.y * resolution.x + ipos.x;
 
   const uint sampleCount = Settings.sampleCount;
-  const uint bounceCount = 4;
+  const uint bounceCount = 3;
   const uint totalSampleCount = Settings.totalSampleCount;
 
   Ray.seed = Tea(Tea(ipos.x, ipos.y), Settings.totalSampleCount);
@@ -141,26 +89,7 @@ void main() {
     vec3 radiance = vec3(0);
     Ray.throughput = vec4(1);
     for (uint bb = 0; bb < bounceCount; ++bb) {
-      // shoot initial ray
-      // this ray returns us the initial closest-hit position on a surface
-      traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 1, 1, 1, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 1);
-      vec3 surfacePosition = ShadowRay.hit;
-      // ray missed everything
-      //bool initialMiss = ShadowRay.shadowed;
-
-      // pick a random light source
-      // also returns a direction which we will shoot our shadow ray to
-      vec3 lightDirection = vec3(0);
-      float lightDistance = 0.0;
-      LightSource lightSource = PickRandomLightSource(Ray.seed, surfacePosition, lightDirection, lightDistance);
-      Ray.lightSource = lightSource;
-
-      // shoot the shadow ray
-      traceNV(topLevelAS, gl_RayFlagsTerminateOnFirstHitNV, 0xFF, 1, 1, 1, surfacePosition, EPSILON, lightDirection, lightDistance - EPSILON, 1);
-      Ray.shadowed = ShadowRay.shadowed;
-
       // execute the shading
-      // use callable shader for this?
       traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
 
       radiance += Ray.radianceAndDistance.rgb;
@@ -182,7 +111,7 @@ void main() {
   pixelColor = accumulatedColor * (1.0 / Settings.totalSampleCount);
   accumulationBuffer.pixels[pixelIndex].rgb = accumulatedColor;
 
-  pixelColor = Uncharted2ToneMapping(pixelColor * (1.0 / Settings.sampleCount));
+  pixelColor = Uncharted2ToneMapping(pixelColor);
 
   pixelBuffer.pixels[pixelIndex] = vec4(pow(pixelColor, vec3(1.0 / 2.2)), 1);
 }

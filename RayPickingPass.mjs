@@ -37,13 +37,18 @@ RayPickingPass.prototype.getCommandBuffer = function() {
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.traceRays(
-      0, 1, 3,
-      window.width, window.height, 1
+      0, 1, 2,
+      1, 1, 1
     );
     passEncoder.endPass();
     this.commandBuffer = commandEncoder.finish();
   }
   return this.commandBuffer;
+};
+
+RayPickingPass.prototype.setMousePickingPosition = function(x, y) {
+  let {pickingBuffer} = this;
+  pickingBuffer.setSubData(0, new Float32Array([x | 0, y | 0]));
 };
 
 RayPickingPass.prototype.getPickingResult = async function() {
@@ -63,22 +68,25 @@ RayPickingPass.prototype.getPickingResult = async function() {
   let result = await pickingReadBackBuffer.mapReadAsync();
   let data = new Float32Array(new Float32Array(result));
 
-  let [x, y, z, instanceId] = data;
-  console.log("Position:", x, y, z);
-  console.log("InstanceId:", instanceId);
-  console.log("Result before:", result.byteLength);
+  let x = data[4];
+  let y = data[5];
+  let z = data[6];
+  let instanceId = data[7];
 
   pickingReadBackBuffer.unmap();
-  console.log("Result after:", result.byteLength);
-  console.log("######");
+
+  return {
+    instanceId,
+    x, y, z
+  };
 };
 
 RayPickingPass.prototype.init = function(topLevelContainer) {
   let {device} = this;
 
-  let pickingBufferStride = 4;
+  let pickingBufferStride = 6;
   let pickingBufferByteLength = pickingBufferStride * 4 * Float32Array.BYTES_PER_ELEMENT;
-  let pickingBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, size: pickingBufferByteLength });
+  let pickingBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, size: pickingBufferByteLength });
   pickingBuffer.byteLength = pickingBufferByteLength;
 
   let pickingReadBackBuffer = device.createBuffer({ usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, size: pickingBuffer.byteLength });
@@ -103,15 +111,17 @@ RayPickingPass.prototype.init = function(topLevelContainer) {
       { binding: 0, type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 1, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
       { binding: 2, type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
+      { binding: 3, type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
     ]
   });
 
   let bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
     bindings: [
-      { binding: 0, size: 0,                        accelerationContainer: topLevelContainer.instance },
-      { binding: 1, size: pickingBuffer.byteLength, buffer: pickingBuffer },
-      { binding: 2, size: camera.buffer.byteLength, buffer: camera.buffer },
+      { binding: 0, size: 0,                               accelerationContainer: topLevelContainer.instance },
+      { binding: 1, size: pickingBuffer.byteLength,        buffer: pickingBuffer },
+      { binding: 2, size: camera.getBuffer().byteLength,   buffer: camera.getBuffer() },
+      { binding: 3, size: settings.getBuffer().byteLength, buffer: settings.getBuffer() },
     ]
   });
 

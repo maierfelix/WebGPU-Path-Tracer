@@ -12,7 +12,6 @@ export default class RayTracingPass {
     this.pipeline = null;
     this.bindGroup = null;
     this.pixelBuffer = null;
-    this.settingsBuffer = null;
     this.commandBuffer = null;
     this.init(instances, materials, images, lights, geometryBuffer);
   }
@@ -28,10 +27,6 @@ RayTracingPass.prototype.getBindGroup = function() {
 
 RayTracingPass.prototype.getPixelBuffer = function() {
   return this.pixelBuffer || null;
-};
-
-RayTracingPass.prototype.getSettingsBuffer = function() {
-  return this.settingsBuffer || null;
 };
 
 RayTracingPass.prototype.getInstanceBuffer = function() {
@@ -85,17 +80,6 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
   let accumulationBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: accumulationBufferByteLength });
   accumulationBuffer.byteLength = accumulationBufferByteLength;
 
-  let settingsBufferByteLength = 8 * Uint32Array.BYTES_PER_ELEMENT;
-  let settingsBuffer = device.createBuffer({ usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM, size: settingsBufferByteLength });
-  settingsBuffer.byteLength = settingsBufferByteLength;
-  settingsBuffer.setSubData(0, new Uint32Array([
-    0,
-    0,
-    lights.length,
-    window.width,
-    window.height
-  ]));
-
   let rayGenShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/ray-generation.rgen`) });
   let rayCHitModule = device.createShaderModule({             code: loadShaderFile(`shaders/ray-closest-hit.rchit`) });
   let rayMissShaderModule = device.createShaderModule({       code: loadShaderFile(`shaders/ray-miss.rmiss`) });
@@ -139,18 +123,18 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
   let bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
     bindings: [
-      { binding: 0,  size: 0,                             accelerationContainer: instanceContainer.instance },
-      { binding: 1,  size: pixelBuffer.byteLength,        buffer: pixelBuffer },
-      { binding: 2,  size: accumulationBuffer.byteLength, buffer: accumulationBuffer },
-      { binding: 3,  size: camera.buffer.byteLength,      buffer: camera.buffer },
-      { binding: 4,  size: settingsBuffer.byteLength,     buffer: settingsBuffer },
-      { binding: 5,  size: attributeBuffer.byteLength,    buffer: attributeBuffer },
-      { binding: 6,  size: faceBuffer.byteLength,         buffer: faceBuffer },
-      { binding: 7,  size: instancesBuffer.byteLength,    buffer: instancesBuffer },
-      { binding: 8,  size: materialBuffer.byteLength,     buffer: materialBuffer },
-      { binding: 9,  size: lightsBuffer.byteLength,       buffer: lightsBuffer },
-      { binding: 10, size: 0,                             sampler: textureSampler },
-      { binding: 11, size: 0,                             textureView: textureView },
+      { binding: 0,  size: 0,                               accelerationContainer: instanceContainer.instance },
+      { binding: 1,  size: pixelBuffer.byteLength,          buffer: pixelBuffer },
+      { binding: 2,  size: accumulationBuffer.byteLength,   buffer: accumulationBuffer },
+      { binding: 3,  size: camera.getBuffer().byteLength,   buffer: camera.getBuffer() },
+      { binding: 4,  size: settings.getBuffer().byteLength, buffer: settings.getBuffer() },
+      { binding: 5,  size: attributeBuffer.byteLength,      buffer: attributeBuffer },
+      { binding: 6,  size: faceBuffer.byteLength,           buffer: faceBuffer },
+      { binding: 7,  size: instancesBuffer.byteLength,      buffer: instancesBuffer },
+      { binding: 8,  size: materialBuffer.byteLength,       buffer: materialBuffer },
+      { binding: 9,  size: lightsBuffer.byteLength,         buffer: lightsBuffer },
+      { binding: 10, size: 0,                               sampler: textureSampler },
+      { binding: 11, size: 0,                               textureView: textureView },
     ]
   });
 
@@ -167,6 +151,5 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
   this.pipeline = pipeline;
   this.bindGroup = bindGroup;
   this.pixelBuffer = pixelBuffer;
-  this.settingsBuffer = settingsBuffer;
   this.instanceBuffer = instanceBuffer;
 };

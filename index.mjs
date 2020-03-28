@@ -3,6 +3,7 @@ import WebGPU from "webgpu";
 import fs from "fs";
 import tolw from "tolw";
 import glMatrix from "gl-matrix";
+import { performance } from "perf_hooks";
 
 import {
   keyCodeToChar,
@@ -12,6 +13,7 @@ import {
 } from "./utils.mjs"
 
 import Camera from "./Camera.mjs";
+import Settings from "./Settings.mjs";
 
 import GeometryBuffer from "./GeometryBuffer.mjs";
 
@@ -42,6 +44,9 @@ Object.assign(global, glMatrix);
 
   let camera = new Camera({ device });
   global["camera"] = camera;
+
+  let settings = new Settings({ device });
+  global["settings"] = settings;
 
   let queue = device.getQueue();
 
@@ -107,10 +112,10 @@ Object.assign(global, glMatrix);
       metalRoughness: images[5],
     },
     {
-      color: [1460000, 1460000, 1460000],
+      color: [14600, 14600, 14600],
     },
     {
-      color: [1290000, 1299000, 1280000],
+      color: [12900, 12990, 12800],
     }
   ];
 
@@ -202,7 +207,7 @@ Object.assign(global, glMatrix);
       transform: {
         translation: { x: 0, y: 128, z: 256 + 48 },
         rotation: { x: 116, y: 0, z: 0 },
-        scale: { x: 32, y: 8, z: 8 }
+        scale: { x: 18, y: 12, z: 12 }
       }
     },
     // light plane
@@ -210,9 +215,9 @@ Object.assign(global, glMatrix);
       material: materials[4],
       geometry: bottomContainers[0],
       transform: {
-        translation: { x: 0, y: 128, z: -256 - 48 },
+        translation: { x: 0, y: 128, z: -128 },
         rotation: { x: -116, y: 0, z: 0 },
-        scale: { x: 64, y: 12, z: 12 }
+        scale: { x: 18, y: 12, z: 12 }
       }
     },
   ];
@@ -234,7 +239,6 @@ Object.assign(global, glMatrix);
   });
 
   let pixelBuffer = rtPass.getPixelBuffer();
-  let settingsBuffer = rtPass.getSettingsBuffer();
   let topLevelContainer = rtPass.getInstanceBuffer().getTopLevelContainer();
 
   let rpPass = new RayPickingPass({ device, topLevelContainer });
@@ -249,8 +253,8 @@ Object.assign(global, glMatrix);
   let blitBindGroup = device.createBindGroup({
     layout: blitBindGroupLayout,
     bindings: [
-      { binding: 0, size: pixelBuffer.byteLength, buffer: pixelBuffer },
-      { binding: 1, size: settingsBuffer.byteLength, buffer: settingsBuffer },
+      { binding: 0, size: pixelBuffer.byteLength,          buffer: pixelBuffer },
+      { binding: 1, size: settings.getBuffer().byteLength, buffer: settings.getBuffer() },
     ]
   });
 
@@ -283,19 +287,16 @@ Object.assign(global, glMatrix);
     }]
   });
 
-  let pickingState = {
-    mouseX: 0,
-    mouseY: 0,
-    needsPicking: false
-  };
-
   let isLeftMousePressed = false;
   window.onmousedown = e => {
-    isLeftMousePressed = true;
-    if (e.button === 0) {
-      pickingState.mouseX = e.x;
-      pickingState.mouseY = e.y;
-      pickingState.needsPicking = true;
+    isLeftMousePressed = e.button === 0;
+    // execute ray picking
+    if (e.button === 1) {
+      rpPass.setMousePickingPosition(e.x, e.y);
+      queue.submit([ rpPass.getCommandBuffer() ]);
+      rpPass.getPickingResult().then(({ x, y, z, instanceId } = _) => {
+        console.log("Picked:", instanceId);
+      });
     }
   };
   window.onmouseup = e => {
@@ -338,13 +339,29 @@ Object.assign(global, glMatrix);
     return keys[key] === 1;
   };
 
-  let delta = 0;
-  let last = Date.now();
-  (function onFrame(now = Date.now()) {
-    delta = (now - last) / 1e3;
-    last = now;
+  let frames = 0;
+  let then = performance.now();
+  (function drawLoop() {
+    let now = performance.now();
+    let delta = (now - then);
+    if (delta > 1.0 || frames === 0) {
+      let fps = Math.floor((frames / delta) * 1e3);
+      window.title = `WebGPU RT - FPS: ${fps} - SPP: ${camera.settings.sampleCount}`;
+      frames = 0;
+    }
+    frames++;
+    then = now;
 
-    camera.update(delta);
+    camera.update(delta / 1e3);
+
+    // update settings buffer
+    settings.getBuffer().setSubData(0, new Uint32Array([
+      camera.settings.sampleCount,
+      camera.settings.totalSampleCount,
+      lights.length,
+      window.width,
+      window.height
+    ]));
 
     // accumulation
     if (camera.hasMoved) camera.resetAccumulation();
@@ -354,12 +371,6 @@ Object.assign(global, glMatrix);
       camera.resetAccumulation();
       rofl = false;
     }
-
-    // upload sample stats
-    settingsBuffer.setSubData(0, new Uint32Array([
-      camera.settings.sampleCount,
-      camera.settings.totalSampleCount
-    ]));
 
     let backBufferView = swapChain.getCurrentTextureView();
 
@@ -386,22 +397,14 @@ Object.assign(global, glMatrix);
       commands.push(commandEncoder.finish());
     }
 
-    // execute ray picking
-    if (pickingState.needsPicking) {
-      commands.push(rpPass.getCommandBuffer());
-      pickingState.needsPicking = false;
-      queue.submit(commands);
-      let pickingResult = rpPass.getPickingResult();
-    } else {
-      queue.submit(commands);
-    }
+    queue.submit(commands);
 
     swapChain.present();
 
     window.pollEvents();
     if (window.shouldClose()) return;
 
-    setImmediate(() => onFrame());
+    setImmediate(drawLoop);
   })();
 
 })();
