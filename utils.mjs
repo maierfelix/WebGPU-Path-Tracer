@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import sbtImage from "sbt-image";
+import lodepng from "@cwasm/lodepng";
+import jpegturbo from "@cwasm/jpeg-turbo";
 
 export function fixateToZero(value, range) {
   if (value > 0 && value <= range) return 0.0;
@@ -24,12 +25,39 @@ export function readBinaryFile(path) {
 
 export function readImageFile(path) {
   let buf = fs.readFileSync(path);
-  let {width, height, data} = sbtImage.loadImage(buf);
-  return {
-    width,
-    height,
-    data: new Uint8ClampedArray(data)
-  };
+  if (isPNGFile(buf)) return readPNGFile(buf);
+  if (isJPEGFile(buf)) return readJPEGFile(buf);
+  throw new Error(`Cannot process image file '${path}'`);
+};
+
+export function readPNGFile(buf) {
+  return lodepng.decode(buf);
+};
+
+export function readJPEGFile(buf) {
+  return jpegturbo.decode(buf);
+};
+
+export function isPNGFile(buffer) {
+  let viewU8 = new Uint8Array(buffer);
+  let offset = 0x0;
+  return (
+    viewU8[offset++] === 0x89 &&
+    viewU8[offset++] === 0x50 &&
+    viewU8[offset++] === 0x4E &&
+    viewU8[offset++] === 0x47
+  );
+};
+
+export function isJPEGFile(buffer) {
+  let viewU8 = new Uint8Array(buffer);
+  let offset = 0x0;
+  return (
+    viewU8[offset++] === 0xFF &&
+    viewU8[offset++] === 0xD8 &&
+    viewU8[offset++] === 0xFF &&
+    viewU8[offset++] === 0xE0
+  );
 };
 
 function findIncludedFile(filePath, includes) {

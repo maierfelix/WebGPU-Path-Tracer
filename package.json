@@ -3,11 +3,10 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "sbt-image": "file:../nvk-optix-denoiser",
+    "@cwasm/jpeg-turbo": "0.1.2",
+    "@cwasm/lodepng": "0.1.1",
     "gl-matrix": "^3.1.0",
-    "simplex-noise": "^2.4.0",
     "tolw": "^0.1.8",
-    "vox-parser": "^0.2.2",
     "webgpu": "file:../webgpu"
   }
 }

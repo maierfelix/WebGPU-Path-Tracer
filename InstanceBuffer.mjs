@@ -51,20 +51,11 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
   let {geometryBuffer} = this;
 
   // create copy and insert placeholder material
-  let placeHolderMaterial = {
-    color: [0, 0, 0],
-    metalness: 0.0,
-    roughness: 0.0,
-    specular: 0.0,
-    albedo: null,
-    normal: null,
-    emission: null,
-    metalRoughness: null
-  };
+  let placeHolderMaterial = {};
   materials = [placeHolderMaterial, ...materials];
 
   // create material buffer
-  let materialBufferStride = 12;
+  let materialBufferStride = 20;
   let materialBufferTotalLength = materials.length * materialBufferStride;
   let materialBuffer = device.createBuffer({
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
@@ -78,23 +69,32 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
   let materialBufferDataU32 = new Uint32Array(materialBufferDataBase);
   for (let ii = 0; ii < materials.length; ++ii) {
     let material = materials[ii];
-    let {color} = material;
+    let {color, emission} = material;
     let {metalness, roughness, specular} = material;
-    let {albedo, normal, emission, metalRoughness} = material;
-    let {textureScaling, emissionIntensity} = material;
+    let {textureScaling} = material;
+    let {albedoMap, normalMap, emissionMap, metalRoughnessMap} = material;
+    let {emissionIntensity, metalnessIntensity, roughnessIntensity} = material;
     let offset = ii * materialBufferStride;
-    materialBufferDataF32[offset++] = Math.pow(color[0] / 255.0, 1.0 / 2.2);
-    materialBufferDataF32[offset++] = Math.pow(color[1] / 255.0, 1.0 / 2.2);
-    materialBufferDataF32[offset++] = Math.pow(color[2] / 255.0, 1.0 / 2.2);
-    materialBufferDataF32[offset++] = clamp(parseFloat(metalness), -0.999, 0.999);
-    materialBufferDataF32[offset++] = clamp(parseFloat(roughness), -0.999, 0.999);
-    materialBufferDataF32[offset++] = clamp(parseFloat(specular),  -0.999, 0.999);
-    materialBufferDataF32[offset++] = textureScaling !== void 0 ? textureScaling : 1.0;
-    materialBufferDataF32[offset++] = emissionIntensity !== void 0 ? emissionIntensity : 1.0;
-    materialBufferDataU32[offset++] = albedo ? images.indexOf(albedo) + 1 : 0;
-    materialBufferDataU32[offset++] = normal ? images.indexOf(normal) + 1 : 0;
-    materialBufferDataU32[offset++] = emission ? images.indexOf(emission) + 1 : 0;
-    materialBufferDataU32[offset++] = metalRoughness ? images.indexOf(metalRoughness) + 1 : 0;
+    materialBufferDataF32[offset++] = color !== void 0 ? Math.pow(color[0] / 255.0, 1.0 / 2.2) : 0.0;
+    materialBufferDataF32[offset++] = color !== void 0 ? Math.pow(color[1] / 255.0, 1.0 / 2.2) : 0.0;
+    materialBufferDataF32[offset++] = color !== void 0 ? Math.pow(color[2] / 255.0, 1.0 / 2.2) : 0.0;
+    materialBufferDataF32[offset++] = 0.0; // alpha
+    materialBufferDataF32[offset++] = emission !== void 0 ? Math.pow(emission[0] / 255.0, 1.0 / 2.2) : 0.0;
+    materialBufferDataF32[offset++] = emission !== void 0 ? Math.pow(emission[1] / 255.0, 1.0 / 2.2) : 0.0;
+    materialBufferDataF32[offset++] = emission !== void 0 ? Math.pow(emission[2] / 255.0, 1.0 / 2.2) : 0.0;
+    materialBufferDataF32[offset++] = 0.0; // alpha
+    materialBufferDataF32[offset++] = clamp(parseFloat(metalness), 0.001, 0.999);
+    materialBufferDataF32[offset++] = clamp(parseFloat(roughness), 0.001, 0.999);
+    materialBufferDataF32[offset++] = clamp(parseFloat(specular),  0.001, 0.999);
+    materialBufferDataF32[offset++] = textureScaling !== void 0 ? parseFloat(textureScaling) : 1.0;
+    materialBufferDataU32[offset++] = albedoMap ? images.indexOf(albedoMap) + 1 : 0;
+    materialBufferDataU32[offset++] = normalMap ? images.indexOf(normalMap) + 1 : 0;
+    materialBufferDataU32[offset++] = emissionMap ? images.indexOf(emissionMap) + 1 : 0;
+    materialBufferDataU32[offset++] = metalRoughnessMap ? images.indexOf(metalRoughnessMap) + 1 : 0;
+    materialBufferDataF32[offset++] = emissionIntensity !== void 0 ? parseFloat(emissionIntensity) : 1.0;
+    materialBufferDataF32[offset++] = metalnessIntensity !== void 0 ? parseFloat(metalnessIntensity) : 1.0;
+    materialBufferDataF32[offset++] = roughnessIntensity !== void 0 ? parseFloat(roughnessIntensity) : 1.0;
+    materialBufferDataF32[offset++] = 0.0; // padding
   };
   materialBuffer.setSubData(0, materialBufferDataU32);
 
@@ -153,7 +153,7 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
 
   let container = device.createRayTracingAccelerationContainer({
     level: "top",
-    flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
+    flags: GPURayTracingAccelerationContainerFlag.ALLOW_UPDATE | GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
     instances: containerInstances
   });
   containers.push({

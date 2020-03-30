@@ -88,28 +88,32 @@ Object.assign(global, glMatrix);
       metalness: 0.001,
       roughness: 0.068,
       specular: 0.0117,
-      albedo: images[6],
-      normal: images[7],
-      metalRoughness: images[8],
+      albedoMap: images[6],
+      normalMap: images[7],
+      metalRoughnessMap: images[8],
       textureScaling: 5.5,
     },
     {
       color: [0, 0, 0],
-      metalness: 0.5,
-      roughness: -0.1634,
+      metalness: 0.0,
+      roughness: 0.0,
       specular: 0.95,
-      albedo: images[0],
-      normal: images[1],
-      metalRoughness: images[2],
+      albedoMap: images[0],
+      normalMap: images[1],
+      metalRoughnessMap: images[2],
+      metalnessIntensity: 1.0,
+      roughnessIntensity: 0.1125,
     },
     {
       color: [0, 0, 0],
-      metalness: 0.5,
-      roughness: -0.1634,
+      metalness: 0.0,
+      roughness: 0.0,
       specular: 0.95,
-      albedo: images[3],
-      normal: images[4],
-      metalRoughness: images[5],
+      albedoMap: images[3],
+      normalMap: images[4],
+      metalRoughnessMap: images[5],
+      metalnessIntensity: 1.0,
+      roughnessIntensity: 0.1125,
     },
     {
       color: [14600, 14600, 14600],
@@ -126,7 +130,7 @@ Object.assign(global, glMatrix);
       geometry: bottomContainers[2],
       transform: {
         translation: { x: -32, y: 0, z: 128 },
-        rotation: { x: 0, y: -80, z: 0 },
+        rotation: { x: 0, y: 100, z: 0 },
         scale: { x: 512, y: 512, z: 512 }
       }
     },
@@ -136,7 +140,7 @@ Object.assign(global, glMatrix);
       geometry: bottomContainers[3],
       transform: {
         translation: { x: -32, y: 0, z: 128 },
-        rotation: { x: 0, y: -80, z: 0 },
+        rotation: { x: 0, y: 100, z: 0 },
         scale: { x: 512, y: 512, z: 512 }
       }
     },
@@ -243,6 +247,11 @@ Object.assign(global, glMatrix);
 
   let rpPass = new RayPickingPass({ device, topLevelContainer });
 
+  images = null;
+  instances = null;
+  materials = null;
+  geometries = null;
+
   let blitBindGroupLayout = device.createBindGroupLayout({
     bindings: [
       { binding: 0, type: "storage-buffer", visibility: GPUShaderStage.FRAGMENT },
@@ -264,11 +273,11 @@ Object.assign(global, glMatrix);
     }),
     sampleCount: 1,
     vertexStage: {
-      module: device.createShaderModule({   code: loadShaderFile(`shaders/screen.vert`) }),
+      module: device.createShaderModule({   code: loadShaderFile(`shaders/blit/screen.vert`) }),
       entryPoint: "main"
     },
     fragmentStage: {
-      module: device.createShaderModule({ code: loadShaderFile(`shaders/screen.frag`) }),
+      module: device.createShaderModule({ code: loadShaderFile(`shaders/blit/screen.frag`) }),
       entryPoint: "main"
     },
     primitiveTopology: "triangle-list",
@@ -287,6 +296,8 @@ Object.assign(global, glMatrix);
     }]
   });
 
+  let pickedInstanceId = 0;
+
   let isLeftMousePressed = false;
   window.onmousedown = e => {
     isLeftMousePressed = e.button === 0;
@@ -295,31 +306,37 @@ Object.assign(global, glMatrix);
       rpPass.setMousePickingPosition(e.x, e.y);
       queue.submit([ rpPass.getCommandBuffer() ]);
       rpPass.getPickingResult().then(({ x, y, z, instanceId } = _) => {
-        console.log("Picked:", instanceId);
+        pickedInstanceId = instanceId;
+        console.log("Picked Instance:", pickedInstanceId - 1);
       });
     }
   };
   window.onmouseup = e => {
     isLeftMousePressed = false;
   };
+  let baseTransform = {
+    translation: { x: -32, y: 0, z: 128 },
+    rotation: { x: 0, y: -80, z: 0 },
+    scale: { x: 512, y: 512, z: 512 }
+  };
   window.onmousemove = e => {
     if (!isLeftMousePressed) return;
     camera.deltaMovement.x = e.movementX * 0.25;
     camera.deltaMovement.y = e.movementY * 0.25;
   };
-  let rofl = false;
+  let resetAccumulation = false;
   window.onmousewheel = e => {
     // aperture
     if (isKeyPressed("Ŕ")) { // shift key
       camera.settings.aperture += e.deltaY * 0.01;
-      rofl = true;
+      resetAccumulation = true;
       console.log(`Camera: Aperture: '${camera.settings.aperture}'`);
     }
     // focus distance
     else {
       camera.settings.focusDistance += e.deltaY * 0.125;
       camera.settings.focusDistance = Math.max(0.1, camera.settings.focusDistance);
-      rofl = true;
+      resetAccumulation = true;
       console.log(`Camera: Focus-Distance: '${camera.settings.focusDistance}'`);
     }
   };
@@ -367,9 +384,9 @@ Object.assign(global, glMatrix);
     if (camera.hasMoved) camera.resetAccumulation();
     else camera.increaseAccumulation();
 
-    if (rofl) {
+    if (resetAccumulation) {
       camera.resetAccumulation();
-      rofl = false;
+      resetAccumulation = false;
     }
 
     let backBufferView = swapChain.getCurrentTextureView();

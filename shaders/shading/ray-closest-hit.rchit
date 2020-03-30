@@ -90,7 +90,7 @@ LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 
   const float triangleArea = 0.5 * length(cross(p1 - p0, p2 - p0));
 
   const vec3 lightSurfacePos = pw;
-  const vec3 lightEmission = Materials[instance.materialIndex].color;
+  const vec3 lightEmission = Materials[instance.materialIndex].color.rgb;
   const vec3 lightNormal = normalize(lightSurfacePos - surfacePos);
 
   const vec3 lightPos = lightSurfacePos - surfacePos;
@@ -186,7 +186,7 @@ void main() {
   const vec3 tex3 = texture(sampler2DArray(TextureArray, TextureSampler), vec3(uv, material.emissionIndex)).rgb;
 
   // material color
-  vec3 color = tex0 + material.color;
+  vec3 color = tex0 + material.color.rgb;
   // material normal
   const vec3 normal = normalize(
     material.normalIndex > 0 ?
@@ -198,10 +198,6 @@ void main() {
   // material emission
   const vec3 emission = pow(tex3, vec3(GAMMA)) * material.emissionIntensity;
 
-  const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-  vec3 intensity = vec3(dot(color, W));
-  color = mix(intensity, color, 1.25);
-
   uint seed = Ray.seed;
   float t = gl_HitTNV;
 
@@ -211,9 +207,9 @@ void main() {
   radiance += emission * throughput;
 
   shading.base_color = color;
-  shading.metallic = clamp(metalRoughness.r + material.metalness, 0.001, 0.999);
+  shading.metallic = clamp(metalRoughness.r + material.metalness, 0.001, 0.999) * material.metalnessIntensity;
   shading.specular = material.specular;
-  shading.roughness = clamp(metalRoughness.g + material.roughness, 0.001, 0.999);
+  shading.roughness = clamp(metalRoughness.g + material.roughness, 0.001, 0.999) * material.roughnessIntensity;
   {
     const vec3 cd_lin = shading.base_color;
     const float cd_lum = dot(cd_lin, vec3(0.3, 0.6, 0.1));

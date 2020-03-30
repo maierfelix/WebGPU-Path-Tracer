@@ -43,26 +43,6 @@ layout (binding = 4) uniform SettingsBuffer {
   uint pad_2;
 } Settings;
 
-layout (binding = 5, std430) readonly buffer AttributeBuffer {
-  Vertex Vertices[];
-};
-
-layout (binding = 6, std430) readonly buffer FaceBuffer {
-  uint Faces[];
-};
-
-layout (binding = 7, std140, row_major) readonly buffer InstanceBuffer {
-  Instance Instances[];
-};
-
-layout (binding = 8, std430) readonly buffer MaterialBuffer {
-  Material Materials[];
-};
-
-layout (binding = 9, std430) readonly buffer LightBuffer {
-  Light Lights[];
-};
-
 void main() {
   const ivec2 ipos = ivec2(gl_LaunchIDNV.xy);
   const ivec2 resolution = ivec2(gl_LaunchSizeNV.xy);

@@ -66,12 +66,12 @@ RayPickingPass.prototype.getPickingResult = async function() {
   queue.submit([ commandEncoder.finish() ]);
 
   let result = await pickingReadBackBuffer.mapReadAsync();
-  let data = new Float32Array(new Float32Array(result));
+  let resultF32 = new Float32Array(result);
 
-  let x = data[4];
-  let y = data[5];
-  let z = data[6];
-  let instanceId = data[7];
+  let x = resultF32[4];
+  let y = resultF32[5];
+  let z = resultF32[6];
+  let instanceId = resultF32[7];
 
   pickingReadBackBuffer.unmap();
 

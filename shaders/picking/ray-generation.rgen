@@ -43,8 +43,9 @@ layout (binding = 3) uniform SettingsBuffer {
 } Settings;
 
 void main() {
-  const vec2 pixel = vec2(Picking.inputData.x, 768 - Picking.inputData.y);
-  const vec2 uv = (pixel / vec2(1280, 768)) * 2.0 - 1.0;
+  const vec2 res = vec2(Settings.screenWidth, Settings.screenHeight);
+  const vec2 pixel = vec2(Picking.inputData.x, res.y - Picking.inputData.y);
+  const vec2 uv = (pixel / res) * 2.0 - 1.0;
 
   vec4 origin = Camera.viewInverse * vec4(0, 0, 0, 1);
   vec4 target = Camera.projectionInverse * (vec4(uv.x, uv.y, 1, 1));

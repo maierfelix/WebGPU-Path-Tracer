@@ -44,16 +44,20 @@ struct Offset {
 };
 
 struct Material {
-  vec3 color;
+  vec4 color;
+  vec4 emission;
   float metalness;
   float roughness;
   float specular;
   float textureScaling;
-  float emissionIntensity;
   uint albedoIndex;
   uint normalIndex;
   uint emissionIndex;
   uint metalRoughnessIndex;
+  float emissionIntensity;
+  float metalnessIntensity;
+  float roughnessIntensity;
+  float pad_0;
 };
 
 struct Light {

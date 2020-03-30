@@ -80,11 +80,11 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
   let accumulationBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: accumulationBufferByteLength });
   accumulationBuffer.byteLength = accumulationBufferByteLength;
 
-  let rayGenShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/ray-generation.rgen`) });
-  let rayCHitModule = device.createShaderModule({             code: loadShaderFile(`shaders/ray-closest-hit.rchit`) });
-  let rayMissShaderModule = device.createShaderModule({       code: loadShaderFile(`shaders/ray-miss.rmiss`) });
-  let rayShadowCHitShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-closest-hit.rchit`) });
-  let rayShadowMissShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shadow-ray-miss.rmiss`) });
+  let rayGenShaderModule = device.createShaderModule({        code: loadShaderFile(`shaders/shading/ray-generation.rgen`) });
+  let rayCHitModule = device.createShaderModule({             code: loadShaderFile(`shaders/shading/ray-closest-hit.rchit`) });
+  let rayMissShaderModule = device.createShaderModule({       code: loadShaderFile(`shaders/shading/ray-miss.rmiss`) });
+  let rayShadowCHitShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shading/shadow-ray-closest-hit.rchit`) });
+  let rayShadowMissShaderModule = device.createShaderModule({ code: loadShaderFile(`shaders/shading/shadow-ray-miss.rmiss`) });
 
   let shaderBindingTable = device.createRayTracingShaderBindingTable({
     stages: [
@@ -110,11 +110,11 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
       { binding: 2,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
       { binding: 3,  type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 4,  type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 5,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 6,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 7,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 8,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 9,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 5,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 6,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 7,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 8,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
+      { binding: 9,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 10, type: "sampler",                visibility: GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 11, type: "sampled-texture",        visibility: GPUShaderStage.RAY_CLOSEST_HIT, textureDimension: "2d-array" },
     ]
@@ -144,7 +144,7 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
     }),
     rayTracingState: {
       shaderBindingTable,
-      maxRecursionDepth: 1
+      maxRecursionDepth: 2
     }
   });
 
