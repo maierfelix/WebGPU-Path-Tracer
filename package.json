@@ -7,6 +7,6 @@
     "@cwasm/lodepng": "0.1.1",
     "gl-matrix": "^3.1.0",
     "tolw": "^0.1.8",
-    "webgpu": "file:../webgpu"
+    "webgpu": "latest"
   }
 }

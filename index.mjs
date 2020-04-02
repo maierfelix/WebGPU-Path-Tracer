@@ -73,7 +73,6 @@ Object.assign(global, glMatrix);
 
   let geometries = [
     tolw.loadObj(readBinaryFile(`assets/models/plane.obj`)),
-    tolw.loadObj(readBinaryFile(`assets/models/sphere.obj`)),
     tolw.loadObj(readBinaryFile(`assets/models/meetmat/body.obj`)),
     tolw.loadObj(readBinaryFile(`assets/models/meetmat/head.obj`)),
     tolw.loadObj(readBinaryFile(`assets/models/box.obj`)),
@@ -127,7 +126,7 @@ Object.assign(global, glMatrix);
     // body
     {
       material: materials[1],
-      geometry: bottomContainers[2],
+      geometry: bottomContainers[1],
       transform: {
         translation: { x: -32, y: 0, z: 128 },
         rotation: { x: 0, y: 100, z: 0 },
@@ -137,7 +136,7 @@ Object.assign(global, glMatrix);
     // head
     {
       material: materials[2],
-      geometry: bottomContainers[3],
+      geometry: bottomContainers[2],
       transform: {
         translation: { x: -32, y: 0, z: 128 },
         rotation: { x: 0, y: 100, z: 0 },
@@ -147,7 +146,7 @@ Object.assign(global, glMatrix);
     // body
     {
       material: materials[1],
-      geometry: bottomContainers[2],
+      geometry: bottomContainers[1],
       transform: {
         translation: { x: 64, y: 0, z: 128 },
         rotation: { x: 0, y: 180, z: 0 },
@@ -157,7 +156,7 @@ Object.assign(global, glMatrix);
     // head
     {
       material: materials[2],
-      geometry: bottomContainers[3],
+      geometry: bottomContainers[2],
       transform: {
         translation: { x: 64, y: 0, z: 128 },
         rotation: { x: 0, y: 180, z: 0 },
@@ -167,7 +166,7 @@ Object.assign(global, glMatrix);
     // body
     {
       material: materials[1],
-      geometry: bottomContainers[2],
+      geometry: bottomContainers[1],
       transform: {
         translation: { x: 32, y: 0, z: 256 - 32 },
         rotation: { x: 0, y: 180 + 70, z: 0 },
@@ -177,7 +176,7 @@ Object.assign(global, glMatrix);
     // head
     {
       material: materials[2],
-      geometry: bottomContainers[3],
+      geometry: bottomContainers[2],
       transform: {
         translation: { x: 32, y: 0, z: 256 - 32 },
         rotation: { x: 0, y: 180 + 70, z: 0 },
@@ -187,7 +186,7 @@ Object.assign(global, glMatrix);
     // floor
     {
       material: materials[0],
-      geometry: bottomContainers[4],
+      geometry: bottomContainers[3],
       transform: {
         translation: { x: 0, y: 384, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
