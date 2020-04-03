@@ -1,6 +1,6 @@
 import {
   calculateTangentsAndBitangents
-} from "./utils.mjs";
+} from "../utils.mjs";
 
 export default class GeometryBuffer {
   constructor({ device, geometries } = _) {
@@ -9,7 +9,6 @@ export default class GeometryBuffer {
       face: null,
       attribute: null
     };
-    this.containers = [];
     this.init(geometries);
   }
 };
@@ -22,25 +21,9 @@ GeometryBuffer.prototype.getAttributeBuffer = function() {
   return this.buffers.attribute || null;
 };
 
-GeometryBuffer.prototype.getBottomLevelContainers = function() {
-  return this.containers;
-};
-
-GeometryBuffer.prototype.build = function() {
-  let {device} = this;
-  let {containers} = this;
-
-  // build bottom-level containers
-  let commandEncoder = device.createCommandEncoder({});
-  for (let container of containers) {
-    commandEncoder.buildRayTracingAccelerationContainer(container.instance);
-  };
-  device.getQueue().submit([ commandEncoder.finish() ]);
-};
-
 GeometryBuffer.prototype.init = function(geometries) {
   let {device} = this;
-  let {buffers, containers} = this;
+  let {buffers} = this;
 
   let faceBufferStride = 3;
   let attributeBufferStride = 16;
@@ -49,8 +32,7 @@ GeometryBuffer.prototype.init = function(geometries) {
   let faceBufferTotalLength = 0;
   let attributeBufferTotalLength = 0;
   for (let geometry of geometries) {
-    let {indices} = geometry;
-    let {vertices, normals, uvs} = geometry;
+    let {indices, vertices, normals, uvs} = geometry.data;
     faceBufferTotalLength += indices.length / 3 * faceBufferStride;
     attributeBufferTotalLength += indices.length * attributeBufferStride;
   };
@@ -74,10 +56,9 @@ GeometryBuffer.prototype.init = function(geometries) {
   let faceBufferOffset = 0;
   let attributeBufferOffset = 0;
   for (let geometry of geometries) {
-    let {indices} = geometry;
-    let {vertices, normals, uvs} = geometry;
+    let {indices, vertices, normals, uvs} = geometry.data;
 
-    let {tangents, bitangents} = calculateTangentsAndBitangents(geometry);
+    let {tangents, bitangents} = calculateTangentsAndBitangents(geometry.data);
 
     // copy each face into the continuous face buffer
     for (let ii = 0; ii < indices.length / 3; ++ii) {
@@ -137,12 +118,13 @@ GeometryBuffer.prototype.init = function(geometries) {
       ]
     });
 
-    containers.push({
+    geometry.accelerationContainer = {
       instance: container,
       faceOffset: faceBufferOffset,
       faceCount: indices.length,
       attributeOffset: attributeBufferOffset / attributeBufferStride
-    });
+    };
+
     faceBufferOffset += indices.length / 3 * faceBufferStride;
     attributeBufferOffset += indices.length * attributeBufferStride;
   };
@@ -150,4 +132,12 @@ GeometryBuffer.prototype.init = function(geometries) {
   // upload
   faceBuffer.setSubData(0, faceBufferData);
   attributeBuffer.setSubData(0, attributeBufferData);
+
+  // build bottom-level containers
+  let commandEncoder = device.createCommandEncoder({});
+  for (let geometry of geometries) {
+    let {accelerationContainer} = geometry;
+    commandEncoder.buildRayTracingAccelerationContainer(accelerationContainer.instance);
+  };
+  device.getQueue().submit([ commandEncoder.finish() ]);
 };

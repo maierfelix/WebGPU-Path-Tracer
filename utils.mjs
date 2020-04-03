@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import tolw from "tolw";
 import lodepng from "@cwasm/lodepng";
 import jpegturbo from "@cwasm/jpeg-turbo";
 
@@ -21,6 +22,11 @@ export function readBinaryFile(path) {
   let buffer = fs.readFileSync(path);
   let {byteOffset, byteLength} = buffer;
   return new Uint8Array(buffer.buffer).subarray(byteOffset, byteOffset + byteLength);
+};
+
+export function readObjectFile(path) {
+  let buf = fs.readFileSync(path);
+  return tolw.loadObj(buf);
 };
 
 export function readImageFile(path) {

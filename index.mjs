@@ -7,18 +7,16 @@ import { performance } from "perf_hooks";
 
 import {
   keyCodeToChar,
-  loadShaderFile,
-  readImageFile,
-  readBinaryFile
+  loadShaderFile
 } from "./utils.mjs"
 
 import Camera from "./Camera.mjs";
 import Settings from "./Settings.mjs";
 
-import GeometryBuffer from "./GeometryBuffer.mjs";
+import RayTracingPass from "./passes/RayTracingPass.mjs";
+import RayPickingPass from "./passes/RayPickingPass.mjs";
 
-import RayTracingPass from "./RayTracingPass.mjs";
-import RayPickingPass from "./RayPickingPass.mjs";
+import Scene from "./Scene.mjs";
 
 Object.assign(global, WebGPU);
 Object.assign(global, glMatrix);
@@ -59,197 +57,161 @@ Object.assign(global, glMatrix);
     format: swapChainFormat
   });
 
-  let images = [
-    readImageFile(`assets/textures/meetmat/02_Body_Base_Color.jpg`),
-    readImageFile(`assets/textures/meetmat/02_Body_Normal_DirectX.jpg`),
-    readImageFile(`assets/textures/meetmat/02_Body_MetallicRoughness.jpg`),
-    readImageFile(`assets/textures/meetmat/01_Head_Base_Color.jpg`),
-    readImageFile(`assets/textures/meetmat/01_Head_Normal_DirectX.jpg`),
-    readImageFile(`assets/textures/meetmat/01_Head_MetallicRoughness.jpg`),
-    readImageFile(`assets/textures/Fabric19/Fabric19_col.jpg`),
-    readImageFile(`assets/textures/Fabric19/Fabric19_nrm.jpg`),
-    readImageFile(`assets/textures/Fabric19/Fabric19_met_rgh.jpg`)
-  ];
+  let scene = new Scene();
 
-  let geometries = [
-    tolw.loadObj(readBinaryFile(`assets/models/plane.obj`)),
-    tolw.loadObj(readBinaryFile(`assets/models/meetmat/body.obj`)),
-    tolw.loadObj(readBinaryFile(`assets/models/meetmat/head.obj`)),
-    tolw.loadObj(readBinaryFile(`assets/models/box.obj`)),
-  ];
+  let MeetMatBodyAlbedo = scene.createTexture().fromPath(`assets/textures/meetmat/02_Body_Base_Color.jpg`);
+  let MeetMatBodyNormal = scene.createTexture().fromPath(`assets/textures/meetmat/02_Body_Normal_DirectX.jpg`);
+  let MeetMatBodyMetallicRoughness = scene.createTexture().fromPath(`assets/textures/meetmat/02_Body_MetallicRoughness.jpg`);
 
-  let geometryBuffer = new GeometryBuffer({ device, geometries });
-  let bottomContainers = geometryBuffer.getBottomLevelContainers();
+  let MeetMatHeadAlbedo = scene.createTexture().fromPath(`assets/textures/meetmat/01_Head_Base_Color.jpg`);
+  let MeetMatHeadNormal = scene.createTexture().fromPath(`assets/textures/meetmat/01_Head_Normal_DirectX.jpg`);
+  let MeetMatHeadMetallicRoughness = scene.createTexture().fromPath(`assets/textures/meetmat/01_Head_MetallicRoughness.jpg`);
 
-  let materials = [
-    {
-      color: [0, 0, 0],
-      metalness: 0.001,
-      roughness: 0.068,
-      specular: 0.0117,
-      albedoMap: images[6],
-      normalMap: images[7],
-      metalRoughnessMap: images[8],
-      textureScaling: 5.5,
-    },
-    {
-      color: [0, 0, 0],
-      metalness: 0.0,
-      roughness: 0.0,
-      specular: 0.95,
-      albedoMap: images[0],
-      normalMap: images[1],
-      metalRoughnessMap: images[2],
-      metalnessIntensity: 1.0,
-      roughnessIntensity: 0.1125,
-    },
-    {
-      color: [0, 0, 0],
-      metalness: 0.0,
-      roughness: 0.0,
-      specular: 0.95,
-      albedoMap: images[3],
-      normalMap: images[4],
-      metalRoughnessMap: images[5],
-      metalnessIntensity: 1.0,
-      roughnessIntensity: 0.1125,
-    },
-    {
-      color: [14600, 14600, 14600],
-    },
-    {
-      color: [12900, 12990, 12800],
-    }
-  ];
+  let Fabric19Albedo = scene.createTexture().fromPath(`assets/textures/Fabric19/Fabric19_col.jpg`);
+  let Fabric19Normal = scene.createTexture().fromPath(`assets/textures/Fabric19/Fabric19_nrm.jpg`);
+  let Fabric19MetallicRoughness = scene.createTexture().fromPath(`assets/textures/Fabric19/Fabric19_met_rgh.jpg`);
 
-  let instances = [
-    // body
-    {
-      material: materials[1],
-      geometry: bottomContainers[1],
-      transform: {
-        translation: { x: -32, y: 0, z: 128 },
-        rotation: { x: 0, y: 100, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // head
-    {
-      material: materials[2],
-      geometry: bottomContainers[2],
-      transform: {
-        translation: { x: -32, y: 0, z: 128 },
-        rotation: { x: 0, y: 100, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // body
-    {
-      material: materials[1],
-      geometry: bottomContainers[1],
-      transform: {
-        translation: { x: 64, y: 0, z: 128 },
-        rotation: { x: 0, y: 180, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // head
-    {
-      material: materials[2],
-      geometry: bottomContainers[2],
-      transform: {
-        translation: { x: 64, y: 0, z: 128 },
-        rotation: { x: 0, y: 180, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // body
-    {
-      material: materials[1],
-      geometry: bottomContainers[1],
-      transform: {
-        translation: { x: 32, y: 0, z: 256 - 32 },
-        rotation: { x: 0, y: 180 + 70, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // head
-    {
-      material: materials[2],
-      geometry: bottomContainers[2],
-      transform: {
-        translation: { x: 32, y: 0, z: 256 - 32 },
-        rotation: { x: 0, y: 180 + 70, z: 0 },
-        scale: { x: 512, y: 512, z: 512 }
-      }
-    },
-    // floor
-    {
-      material: materials[0],
-      geometry: bottomContainers[3],
-      transform: {
-        translation: { x: 0, y: 384, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-        scale: { x: 384, y: 384, z: 384 }
-      }
-    },
-    // light plane
-    {
-      material: materials[3],
-      geometry: bottomContainers[0],
-      transform: {
-        translation: { x: 0, y: 768 - 1, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-        scale: { x: 32, y: 32, z: 32 }
-      }
-    },
-    // light plane
-    {
-      material: materials[4],
-      geometry: bottomContainers[0],
-      transform: {
-        translation: { x: 0, y: 128, z: 256 + 48 },
-        rotation: { x: 116, y: 0, z: 0 },
-        scale: { x: 18, y: 12, z: 12 }
-      }
-    },
-    // light plane
-    {
-      material: materials[4],
-      geometry: bottomContainers[0],
-      transform: {
-        translation: { x: 0, y: 128, z: -128 },
-        rotation: { x: -116, y: 0, z: 0 },
-        scale: { x: 18, y: 12, z: 12 }
-      }
-    },
-  ];
+  let Plane = scene.createGeometry().fromPath(`assets/models/plane.obj`);
+  let MeetMatBody = scene.createGeometry().fromPath(`assets/models/meetmat/body.obj`);
+  let MeetMatHead = scene.createGeometry().fromPath(`assets/models/meetmat/head.obj`);
+  let Box = scene.createGeometry().fromPath(`assets/models/box.obj`);
 
-  let lights = [
-    {
-      instance: instances[instances.length - 3]
-    },
-    {
-      instance: instances[instances.length - 2]
-    },
-    {
-      instance: instances[instances.length - 1]
-    }
-  ];
-
-  let rtPass = new RayTracingPass({
-    device, instances, materials, images, lights, geometryBuffer
+  let FloorMaterial = scene.createMaterial({
+    color: [0, 0, 0],
+    metalness: 0.001,
+    roughness: 0.068,
+    specular: 0.0117,
+    albedoMap: Fabric19Albedo,
+    normalMap: Fabric19Normal,
+    metalRoughnessMap: Fabric19MetallicRoughness,
+    textureScaling: 5.5
   });
 
+  let MeetMatBodyMaterial = scene.createMaterial({
+    color: [0, 0, 0],
+    metalness: 0.0,
+    roughness: 0.0,
+    specular: 0.95,
+    albedoMap: MeetMatBodyAlbedo,
+    normalMap: MeetMatBodyNormal,
+    metalRoughnessMap: MeetMatBodyMetallicRoughness,
+    metalnessIntensity: 1.0,
+    roughnessIntensity: 0.1125,
+  });
+
+  let MeetMatHeadMaterial = scene.createMaterial({
+    color: [0, 0, 0],
+    metalness: 0.0,
+    roughness: 0.0,
+    specular: 0.95,
+    albedoMap: MeetMatHeadAlbedo,
+    normalMap: MeetMatHeadNormal,
+    metalRoughnessMap: MeetMatHeadMetallicRoughness,
+    metalnessIntensity: 1.0,
+    roughnessIntensity: 0.1125,
+  });
+
+  let LightMaterial0 = scene.createMaterial({
+    color: [14600, 14600, 14600]
+  });
+
+  let LightMaterial1 = scene.createMaterial({
+    color: [12900, 12990, 12800]
+  });
+
+  MeetMatBody.addMeshInstance({
+    material: MeetMatBodyMaterial,
+    transform: {
+      translation: { x: -32, y: 0, z: 128 },
+      rotation: { x: 0, y: 100, z: 0 },
+      scale: { x: 512, y: 512, z: 512 }
+    }
+  });
+  MeetMatHead.addMeshInstance({
+    material: MeetMatHeadMaterial,
+    transform: {
+      translation: { x: -32, y: 0, z: 128 },
+      rotation: { x: 0, y: 100, z: 0 },
+      scale: { x: 512, y: 512, z: 512 }
+    }
+  });
+
+  MeetMatBody.addMeshInstance({
+    material: MeetMatBodyMaterial,
+    transform: {
+      translation: { x: 64, y: 0, z: 128 },
+      rotation: { x: 0, y: 180, z: 0 },
+      scale: { x: 512, y: 512, z: 512 }
+    }
+  });
+  MeetMatHead.addMeshInstance({
+    material: MeetMatHeadMaterial,
+    transform: {
+      translation: { x: 64, y: 0, z: 128 },
+      rotation: { x: 0, y: 180, z: 0 },
+      scale: { x: 512, y: 512, z: 512 }
+    }
+  });
+
+  MeetMatBody.addMeshInstance({
+    material: MeetMatBodyMaterial,
+    transform: {
+      translation: { x: 32, y: 0, z: 256 - 32 },
+      rotation: { x: 0, y: 180 + 70, z: 0 },
+      scale: { x: 512, y: 512, z: 512 }
+    }
+  });
+  MeetMatHead.addMeshInstance({
+    material: MeetMatHeadMaterial,
+    transform: {
+      translation: { x: 32, y: 0, z: 256 - 32 },
+      rotation: { x: 0, y: 180 + 70, z: 0 },
+      scale: { x: 512, y: 512, z: 512 }
+    }
+  });
+
+  Box.addMeshInstance({
+    material: FloorMaterial,
+    transform: {
+      translation: { x: 0, y: 384, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 384, y: 384, z: 384 }
+    }
+  });
+
+  Plane.addEmitterInstance({
+    material: LightMaterial0,
+    transform: {
+      translation: { x: 0, y: 768 - 1, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 32, y: 32, z: 32 }
+    }
+  });
+
+  Plane.addEmitterInstance({
+    material: LightMaterial1,
+    transform: {
+      translation: { x: 0, y: 128, z: 256 + 48 },
+      rotation: { x: 116, y: 0, z: 0 },
+      scale: { x: 18, y: 12, z: 12 }
+    }
+  });
+
+  Plane.addEmitterInstance({
+    material: LightMaterial1,
+    transform: {
+      translation: { x: 0, y: 128, z: -128 },
+      rotation: { x: -116, y: 0, z: 0 },
+      scale: { x: 18, y: 12, z: 12 }
+    }
+  });
+
+  let rtPass = new RayTracingPass({ device, scene });
+
   let pixelBuffer = rtPass.getPixelBuffer();
-  let topLevelContainer = rtPass.getInstanceBuffer().getTopLevelContainer();
+  let instanceContainer = rtPass.getInstanceBuffer().getAccelerationContainer();
 
-  let rpPass = new RayPickingPass({ device, topLevelContainer });
-
-  images = null;
-  instances = null;
-  materials = null;
-  geometries = null;
+  let rpPass = new RayPickingPass({ device, instanceContainer });
 
   let blitBindGroupLayout = device.createBindGroupLayout({
     bindings: [
@@ -272,7 +234,7 @@ Object.assign(global, glMatrix);
     }),
     sampleCount: 1,
     vertexStage: {
-      module: device.createShaderModule({   code: loadShaderFile(`shaders/blit/screen.vert`) }),
+      module: device.createShaderModule({ code: loadShaderFile(`shaders/blit/screen.vert`) }),
       entryPoint: "main"
     },
     fragmentStage: {
@@ -296,6 +258,7 @@ Object.assign(global, glMatrix);
   });
 
   let pickedInstanceId = 0;
+  let pickedInstance = null;
 
   let isLeftMousePressed = false;
   window.onmousedown = e => {
@@ -305,18 +268,16 @@ Object.assign(global, glMatrix);
       rpPass.setMousePickingPosition(e.x, e.y);
       queue.submit([ rpPass.getCommandBuffer() ]);
       rpPass.getPickingResult().then(({ x, y, z, instanceId } = _) => {
-        pickedInstanceId = instanceId;
-        console.log("Picked Instance:", pickedInstanceId - 1);
+        pickedInstanceId = instanceId - 1;
+        if (pickedInstanceId >= 0) {
+          let instance = scene.getInstanceTransformById(pickedInstanceId);
+          pickedInstance = instance;
+        }
       });
     }
   };
   window.onmouseup = e => {
     isLeftMousePressed = false;
-  };
-  let baseTransform = {
-    translation: { x: -32, y: 0, z: 128 },
-    rotation: { x: 0, y: -80, z: 0 },
-    scale: { x: 512, y: 512, z: 512 }
   };
   window.onmousemove = e => {
     if (!isLeftMousePressed) return;
@@ -374,7 +335,7 @@ Object.assign(global, glMatrix);
     settings.getBuffer().setSubData(0, new Uint32Array([
       camera.settings.sampleCount,
       camera.settings.totalSampleCount,
-      lights.length,
+      scene.getLightsFlattened().length,
       window.width,
       window.height
     ]));
@@ -416,6 +377,24 @@ Object.assign(global, glMatrix);
     queue.submit(commands);
 
     swapChain.present();
+
+    if (pickedInstanceId >= 0 && pickedInstance) {
+      // update instance data
+      pickedInstance.data.transform.rotation.y += 0.25;
+      instanceContainer.updateInstance(pickedInstanceId, {
+        flags: GPURayTracingAccelerationInstanceFlag.NONE,
+        mask: 0xFF,
+        instanceId: pickedInstanceId,
+        instanceOffset: 0x0,
+        geometryContainer: pickedInstance.parent.accelerationContainer.instance,
+        transform: pickedInstance.data.transform
+      });
+      // update instance container
+      let commandEncoder = device.createCommandEncoder({});
+      commandEncoder.updateRayTracingAccelerationContainer(instanceContainer);
+      queue.submit([ commandEncoder.finish() ]);
+      resetAccumulation = true;
+    }
 
     window.pollEvents();
     if (window.shouldClose()) return;

@@ -1,18 +1,18 @@
 import {
   clamp,
   getTransformMatrix
-} from "./utils.mjs";
+} from "../utils.mjs";
 
 export default class InstanceBuffer {
-  constructor({ device, instances, materials, images, geometryBuffer } = _) {
+  constructor({ device, instances, materials, textures, lights } = _) {
     this.device = device || null;
-    this.geometryBuffer = geometryBuffer || null;
     this.buffers = {
       instance: null,
-      material: null
+      material: null,
+      light: null
     };
-    this.containers = [];
-    this.init(instances, materials, images);
+    this.accelerationContainer = null;
+    this.init(instances, materials, textures, lights);
   }
 };
 
@@ -24,34 +24,20 @@ InstanceBuffer.prototype.getMaterialBuffer = function() {
   return this.buffers.material || null;
 };
 
-InstanceBuffer.prototype.getTopLevelContainer = function() {
-  return this.containers[0] || null;
+InstanceBuffer.prototype.getLightBuffer = function() {
+  return this.buffers.light || null;
 };
 
-InstanceBuffer.prototype.build = function() {
-  let {device} = this;
-  let {containers, geometryBuffer} = this;
-
-  let container = containers[0];
-
-  // build bottom-level containers
-  geometryBuffer.build();
-
-  // build top-level containers
-  let commandEncoder = device.createCommandEncoder({});
-  for (let container of containers) {
-    commandEncoder.buildRayTracingAccelerationContainer(container.instance);
-  };
-  device.getQueue().submit([ commandEncoder.finish() ]);
+InstanceBuffer.prototype.getAccelerationContainer = function() {
+  return this.accelerationContainer || null;
 };
 
-InstanceBuffer.prototype.init = function(instances, materials, images) {
+InstanceBuffer.prototype.init = function(instances, materials, textures, lights) {
   let {device} = this;
-  let {buffers, containers} = this;
-  let {geometryBuffer} = this;
+  let {buffers} = this;
 
   // create copy and insert placeholder material
-  let placeHolderMaterial = {};
+  let placeHolderMaterial = { data: {} };
   materials = [placeHolderMaterial, ...materials];
 
   // create material buffer
@@ -68,7 +54,7 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
   let materialBufferDataF32 = new Float32Array(materialBufferDataBase);
   let materialBufferDataU32 = new Uint32Array(materialBufferDataBase);
   for (let ii = 0; ii < materials.length; ++ii) {
-    let material = materials[ii];
+    let material = materials[ii].data;
     let {color, emission} = material;
     let {metalness, roughness, specular} = material;
     let {textureScaling} = material;
@@ -87,10 +73,10 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
     materialBufferDataF32[offset++] = clamp(parseFloat(roughness), 0.001, 0.999);
     materialBufferDataF32[offset++] = clamp(parseFloat(specular),  0.001, 0.999);
     materialBufferDataF32[offset++] = textureScaling !== void 0 ? parseFloat(textureScaling) : 1.0;
-    materialBufferDataU32[offset++] = albedoMap ? images.indexOf(albedoMap) + 1 : 0;
-    materialBufferDataU32[offset++] = normalMap ? images.indexOf(normalMap) + 1 : 0;
-    materialBufferDataU32[offset++] = emissionMap ? images.indexOf(emissionMap) + 1 : 0;
-    materialBufferDataU32[offset++] = metalRoughnessMap ? images.indexOf(metalRoughnessMap) + 1 : 0;
+    materialBufferDataU32[offset++] = albedoMap ? textures.indexOf(albedoMap) + 1 : 0;
+    materialBufferDataU32[offset++] = normalMap ? textures.indexOf(normalMap) + 1 : 0;
+    materialBufferDataU32[offset++] = emissionMap ? textures.indexOf(emissionMap) + 1 : 0;
+    materialBufferDataU32[offset++] = metalRoughnessMap ? textures.indexOf(metalRoughnessMap) + 1 : 0;
     materialBufferDataF32[offset++] = emissionIntensity !== void 0 ? parseFloat(emissionIntensity) : 1.0;
     materialBufferDataF32[offset++] = metalnessIntensity !== void 0 ? parseFloat(metalnessIntensity) : 1.0;
     materialBufferDataF32[offset++] = roughnessIntensity !== void 0 ? parseFloat(roughnessIntensity) : 1.0;
@@ -112,7 +98,10 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
   let instanceBufferDataF32 = new Float32Array(instanceBufferDataBase);
   let instanceBufferDataU32 = new Uint32Array(instanceBufferDataBase);
   for (let ii = 0; ii < instances.length; ++ii) {
-    let {material, geometry, transform} = instances[ii];
+    let instance = instances[ii];
+    let geometry = instance.parent;
+    let {accelerationContainer} = geometry;
+    let {material, transform} = instance.data;
     let transformMatrix = getTransformMatrix(transform);
     let offset = ii * instanceBufferStride;
     // transform matrix
@@ -129,35 +118,64 @@ InstanceBuffer.prototype.init = function(instances, materials, images) {
     instanceBufferDataF32[offset++] = transformMatrix[10];
     instanceBufferDataF32[offset++] = transformMatrix[11];
     // offsets
-    instanceBufferDataU32[offset++] = geometry.attributeOffset;
-    instanceBufferDataU32[offset++] = geometry.faceOffset;
-    instanceBufferDataU32[offset++] = geometry.faceCount;
+    instanceBufferDataU32[offset++] = accelerationContainer.attributeOffset;
+    instanceBufferDataU32[offset++] = accelerationContainer.faceOffset;
+    instanceBufferDataU32[offset++] = accelerationContainer.faceCount;
     instanceBufferDataU32[offset++] = materials.indexOf(material);
   };
   instanceBuffer.setSubData(0, instanceBufferDataU32);
 
+  // create light buffer
+  let lightBufferStride = 4;
+  let lightBufferTotalLength = lights.length * lightBufferStride;
+  let lightBuffer = device.createBuffer({
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+    size: lightBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT
+  });
+  lightBuffer.byteLength = lightBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT;
+  buffers.light = lightBuffer;
+
+  let lightBufferDataBase = new ArrayBuffer(lightBufferTotalLength * 4); 
+  let lightBufferDataF32 = new Float32Array(lightBufferDataBase);
+  let lightBufferDataU32 = new Uint32Array(lightBufferDataBase);
+  for (let ii = 0; ii < lights.length; ++ii) {
+    let light = lights[ii];
+    let {instance} = light;
+    let offset = ii * lightBufferStride;
+    lightBufferDataU32[offset++] = instances.indexOf(light);
+    lightBufferDataF32[offset++] = 0.0; // padding
+    lightBufferDataF32[offset++] = 0.0; // padding
+    lightBufferDataF32[offset++] = 0.0; // padding
+  };
+  lightBuffer.setSubData(0, lightBufferDataU32);
+
   // create acceleration container
-  let containerInstances = [];
+  let geometryInstances = [];
   for (let ii = 0; ii < instances.length; ++ii) {
     let instance = instances[ii];
-    let {material, geometry, transform} = instance;
+    let geometry = instance.parent;
+    let {accelerationContainer} = geometry;
+    let {material, transform} = instance.data;
     let instanceEntry = {};
     instanceEntry.flags = GPURayTracingAccelerationInstanceFlag.NONE;
     instanceEntry.mask = 0xFF;
     instanceEntry.instanceId = ii;
     instanceEntry.instanceOffset = 0x0;
-    instanceEntry.geometryContainer = geometry.instance;
+    instanceEntry.geometryContainer = accelerationContainer.instance;
     if (transform) instanceEntry.transform = transform;
-    containerInstances.push(instanceEntry);
+    geometryInstances.push(instanceEntry);
   };
 
-  let container = device.createRayTracingAccelerationContainer({
+  let accelerationContainer = device.createRayTracingAccelerationContainer({
     level: "top",
     flags: GPURayTracingAccelerationContainerFlag.ALLOW_UPDATE | GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
-    instances: containerInstances
-  });
-  containers.push({
-    instance: container
+    instances: geometryInstances
   });
 
+  // build top-level containers
+  let commandEncoder = device.createCommandEncoder({});
+  commandEncoder.buildRayTracingAccelerationContainer(accelerationContainer);
+  device.getQueue().submit([ commandEncoder.finish() ]);
+
+  this.accelerationContainer = accelerationContainer;
 };

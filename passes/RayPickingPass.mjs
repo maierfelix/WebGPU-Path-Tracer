@@ -1,13 +1,9 @@
 import {
   loadShaderFile
-} from "./utils.mjs"
-
-import LightBuffer from "./LightBuffer.mjs";
-import InstanceBuffer from "./InstanceBuffer.mjs";
-import TextureArrayBuffer from "./TextureArrayBuffer.mjs";
+} from "../utils.mjs"
 
 export default class RayPickingPass {
-  constructor({ device, topLevelContainer } = _) {
+  constructor({ device, instanceContainer } = _) {
     this.device = device || null;
     this.pipeline = null;
     this.bindGroup = null;
@@ -15,7 +11,7 @@ export default class RayPickingPass {
     this.pickingReadBackBuffer = null;
     this.settingsBuffer = null;
     this.commandBuffer = null;
-    this.init(topLevelContainer);
+    this.init(instanceContainer);
   }
 };
 
@@ -81,7 +77,7 @@ RayPickingPass.prototype.getPickingResult = async function() {
   };
 };
 
-RayPickingPass.prototype.init = function(topLevelContainer) {
+RayPickingPass.prototype.init = function(instanceContainer) {
   let {device} = this;
 
   let pickingBufferStride = 6;
@@ -118,7 +114,7 @@ RayPickingPass.prototype.init = function(topLevelContainer) {
   let bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
     bindings: [
-      { binding: 0, size: 0,                               accelerationContainer: topLevelContainer.instance },
+      { binding: 0, size: 0,                               accelerationContainer: instanceContainer },
       { binding: 1, size: pickingBuffer.byteLength,        buffer: pickingBuffer },
       { binding: 2, size: camera.getBuffer().byteLength,   buffer: camera.getBuffer() },
       { binding: 3, size: settings.getBuffer().byteLength, buffer: settings.getBuffer() },

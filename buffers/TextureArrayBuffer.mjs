@@ -1,10 +1,10 @@
 export default class TextureArrayBuffer {
-  constructor({ device, images } = _) {
+  constructor({ device, textures } = _) {
     this.device = device || null;
     this.sampler = null;
     this.texture = null;
     this.textureView = null;
-    this.init(images);
+    this.init(textures);
   }
 };
 
@@ -16,33 +16,35 @@ TextureArrayBuffer.prototype.getTextureView = function() {
   return this.textureView || null;
 };
 
-TextureArrayBuffer.prototype.init = function(images) {
+TextureArrayBuffer.prototype.init = function(textures) {
   let {device} = this;
 
   let queue = device.getQueue();
 
-  let initialWidth = images[0].width;
-  let initialHeight = images[0].height;
-  for (let ii = 1; ii < images.length; ++ii) {
-    let image = images[ii];
-    if (image.width !== initialWidth) {
-      throw new Error(`Expected image width of '${initialWidth}' but got '${image.width}'`);
+  let initialWidth = textures[0] ? textures[0].data.width : 16;
+  let initialHeight = textures[0] ? textures[0].data.height : 16;
+  for (let ii = 1; ii < textures.length; ++ii) {
+    let {data, width, height} = textures[ii].data;
+    if (width !== initialWidth) {
+      throw new Error(`Expected image width of '${initialWidth}' but got '${width}'`);
     }
-    else if (image.height !== initialHeight) {
-      throw new Error(`Expected image height of '${initialHeight}' but got '${image.height}'`);
+    else if (height !== initialHeight) {
+      throw new Error(`Expected image height of '${initialHeight}' but got '${height}'`);
     }
-    else if (image.width !== image.height) {
-      throw new Error(`Image width '${image.width}' match image height ${image.height}`);
+    else if (width !== height) {
+      throw new Error(`Image width '${width}' match image height ${height}`);
     }
   };
 
   // create copy and insert placeholder image
-  let placeHolderImage = {
-    data: new Uint8ClampedArray(initialWidth * initialHeight * 4),
-    width: initialWidth,
-    height: initialHeight
+  let placeHolderTexture = {
+    data: {
+      data: new Uint8ClampedArray(initialWidth * initialHeight * 4),
+      width: initialWidth,
+      height: initialHeight
+    }
   };
-  images = [placeHolderImage, ...images];
+  textures = [placeHolderTexture, ...textures];
 
   let sampler = device.createSampler({
     magFilter: "linear",
@@ -58,7 +60,7 @@ TextureArrayBuffer.prototype.init = function(images) {
       height: initialHeight,
       depth: 1
     },
-    arrayLayerCount: images.length,
+    arrayLayerCount: textures.length,
     mipLevelCount: 1,
     sampleCount: 1,
     dimension: "2d",
@@ -69,7 +71,7 @@ TextureArrayBuffer.prototype.init = function(images) {
   let textureView = texture.createView({
     dimension: "2d-array",
     baseArrayLayer: 0,
-    arrayLayerCount: images.length,
+    arrayLayerCount: textures.length,
     format: "rgba8unorm-srgb"
   });
 
@@ -79,11 +81,11 @@ TextureArrayBuffer.prototype.init = function(images) {
     size: textureData.byteLength,
     usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
   });
-  for (let ii = 0; ii < images.length; ++ii) {
-    let image = images[ii];
+  for (let ii = 0; ii < textures.length; ++ii) {
+    let {data, width, height} = textures[ii].data;
 
     // copy image data into buffer
-    textureCopyBuffer.setSubData(0, image.data);
+    textureCopyBuffer.setSubData(0, data);
 
     let commandEncoder = device.createCommandEncoder({});
     commandEncoder.copyBufferToTexture(
@@ -101,8 +103,8 @@ TextureArrayBuffer.prototype.init = function(images) {
         origin: { x: 0, y: 0, z: 0 }
       },
       {
-        width: image.width,
-        height: image.height,
+        width: width,
+        height: height,
         depth: 1
       }
     );

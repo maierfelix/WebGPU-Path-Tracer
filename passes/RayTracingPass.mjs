@@ -1,19 +1,19 @@
 import {
   loadShaderFile
-} from "./utils.mjs"
+} from "../utils.mjs"
 
-import LightBuffer from "./LightBuffer.mjs";
-import InstanceBuffer from "./InstanceBuffer.mjs";
-import TextureArrayBuffer from "./TextureArrayBuffer.mjs";
+import GeometryBuffer from "../buffers/GeometryBuffer.mjs";
+import InstanceBuffer from "../buffers/InstanceBuffer.mjs";
+import TextureArrayBuffer from "../buffers/TextureArrayBuffer.mjs";
 
 export default class RayTracingPass {
-  constructor({ device, instances, materials, images, lights, geometryBuffer } = _) {
+  constructor({ device, scene } = _) {
     this.device = device || null;
     this.pipeline = null;
     this.bindGroup = null;
     this.pixelBuffer = null;
     this.commandBuffer = null;
-    this.init(instances, materials, images, lights, geometryBuffer);
+    this.init(scene);
   }
 };
 
@@ -52,25 +52,30 @@ RayTracingPass.prototype.getCommandBuffer = function() {
   return this.commandBuffer;
 };
 
-RayTracingPass.prototype.init = function(instances, materials, images, lights, geometryBuffer) {
+RayTracingPass.prototype.init = function(scene) {
   let {device} = this;
+
+  let {textures, materials, geometries} = scene.objects;
+
+  let instances = scene.getInstancesFlattened();
+  let lights = scene.getLightsFlattened();
+
+  let geometryBuffer = new GeometryBuffer({ device, geometries });
 
   let faceBuffer = geometryBuffer.getFaceBuffer();
   let attributeBuffer = geometryBuffer.getAttributeBuffer();
 
-  let instanceBuffer = new InstanceBuffer({ device, instances, materials, images, geometryBuffer });
-  instanceBuffer.build();
+  let instanceBuffer = new InstanceBuffer({ device, instances, geometries, materials, textures, lights });
 
   let materialBuffer = instanceBuffer.getMaterialBuffer();
   let instancesBuffer = instanceBuffer.getInstanceBuffer();
-  let instanceContainer = instanceBuffer.getTopLevelContainer();
+  let lightsBuffer = instanceBuffer.getLightBuffer();
 
-  let textureArray = new TextureArrayBuffer({ device, images });
+  let instanceContainer = instanceBuffer.getAccelerationContainer();
+
+  let textureArray = new TextureArrayBuffer({ device, textures });
   let textureView = textureArray.getTextureView();
   let textureSampler = textureArray.getTextureSampler();
-
-  let lightBuffer = new LightBuffer({ device, instances, lights });
-  let lightsBuffer = lightBuffer.getLightBuffer();
 
   let pixelBufferByteLength = window.width * window.height * 4 * Float32Array.BYTES_PER_ELEMENT;
   let pixelBuffer = device.createBuffer({ usage: GPUBufferUsage.STORAGE, size: pixelBufferByteLength });
@@ -123,7 +128,7 @@ RayTracingPass.prototype.init = function(instances, materials, images, lights, g
   let bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
     bindings: [
-      { binding: 0,  size: 0,                               accelerationContainer: instanceContainer.instance },
+      { binding: 0,  size: 0,                               accelerationContainer: instanceContainer },
       { binding: 1,  size: pixelBuffer.byteLength,          buffer: pixelBuffer },
       { binding: 2,  size: accumulationBuffer.byteLength,   buffer: accumulationBuffer },
       { binding: 3,  size: camera.getBuffer().byteLength,   buffer: camera.getBuffer() },
