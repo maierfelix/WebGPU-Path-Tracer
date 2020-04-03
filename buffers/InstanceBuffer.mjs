@@ -32,6 +32,42 @@ InstanceBuffer.prototype.getAccelerationContainer = function() {
   return this.accelerationContainer || null;
 };
 
+InstanceBuffer.prototype.updateInstance = function(instanceId, instance) {
+  let {device} = this;
+  let {buffers, accelerationContainer} = this;
+  let {transform} = instance.data;
+
+  let matrices = getTransformMatrix(transform);
+
+  // transform matrix
+  // padding
+  // normal matrix
+  let buffer = new ArrayBuffer(
+    (3 * 4) * 4 +
+    (4)     * 4 +
+    (4 * 4) * 4
+  );
+  let viewF32 = new Float32Array(buffer);
+
+  viewF32.set(matrices.transform, 0x0);
+  viewF32.set(matrices.normal, 3 * 4 + 4);
+
+  buffers.instance.setSubData(
+    instance.instanceBufferByteOffset,
+    viewF32
+  );
+
+  accelerationContainer.updateInstance(instanceId, {
+    flags: GPURayTracingAccelerationInstanceFlag.NONE,
+    mask: 0xFF,
+    instanceId: instanceId,
+    instanceOffset: 0x0,
+    geometryContainer: instance.parent.accelerationContainer.instance,
+    transform: transform
+  });
+
+};
+
 InstanceBuffer.prototype.init = function(instances, materials, textures, lights) {
   let {device} = this;
   let {buffers} = this;
@@ -45,9 +81,9 @@ InstanceBuffer.prototype.init = function(instances, materials, textures, lights)
   let materialBufferTotalLength = materials.length * materialBufferStride;
   let materialBuffer = device.createBuffer({
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    size: materialBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT
+    size: materialBufferTotalLength * 4
   });
-  materialBuffer.byteLength = materialBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT;
+  materialBuffer.byteLength = materialBufferTotalLength * 4;
   buffers.material = materialBuffer;
 
   let materialBufferDataBase = new ArrayBuffer(materialBufferTotalLength * 4); 
@@ -85,13 +121,13 @@ InstanceBuffer.prototype.init = function(instances, materials, textures, lights)
   materialBuffer.setSubData(0, materialBufferDataU32);
 
   // create instance buffer
-  let instanceBufferStride = 16;
+  let instanceBufferStride = 36;
   let instanceBufferTotalLength = instances.length * instanceBufferStride;
   let instanceBuffer = device.createBuffer({
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    size: instanceBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT
+    size: instanceBufferTotalLength * 4
   });
-  instanceBuffer.byteLength = instanceBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT;
+  instanceBuffer.byteLength = instanceBufferTotalLength * 4;
   buffers.instance = instanceBuffer;
 
   let instanceBufferDataBase = new ArrayBuffer(instanceBufferTotalLength * 4); 
@@ -102,21 +138,43 @@ InstanceBuffer.prototype.init = function(instances, materials, textures, lights)
     let geometry = instance.parent;
     let {accelerationContainer} = geometry;
     let {material, transform} = instance.data;
-    let transformMatrix = getTransformMatrix(transform);
+    let matrices = getTransformMatrix(transform);
     let offset = ii * instanceBufferStride;
+    instance.instanceBufferByteOffset = offset * 4;
     // transform matrix
-    instanceBufferDataF32[offset++] = transformMatrix[0];
-    instanceBufferDataF32[offset++] = transformMatrix[1];
-    instanceBufferDataF32[offset++] = transformMatrix[2];
-    instanceBufferDataF32[offset++] = transformMatrix[3];
-    instanceBufferDataF32[offset++] = transformMatrix[4];
-    instanceBufferDataF32[offset++] = transformMatrix[5];
-    instanceBufferDataF32[offset++] = transformMatrix[6];
-    instanceBufferDataF32[offset++] = transformMatrix[7];
-    instanceBufferDataF32[offset++] = transformMatrix[8];
-    instanceBufferDataF32[offset++] = transformMatrix[9];
-    instanceBufferDataF32[offset++] = transformMatrix[10];
-    instanceBufferDataF32[offset++] = transformMatrix[11];
+    instanceBufferDataF32[offset++] = matrices.transform[0];
+    instanceBufferDataF32[offset++] = matrices.transform[1];
+    instanceBufferDataF32[offset++] = matrices.transform[2];
+    instanceBufferDataF32[offset++] = matrices.transform[3];
+    instanceBufferDataF32[offset++] = matrices.transform[4];
+    instanceBufferDataF32[offset++] = matrices.transform[5];
+    instanceBufferDataF32[offset++] = matrices.transform[6];
+    instanceBufferDataF32[offset++] = matrices.transform[7];
+    instanceBufferDataF32[offset++] = matrices.transform[8];
+    instanceBufferDataF32[offset++] = matrices.transform[9];
+    instanceBufferDataF32[offset++] = matrices.transform[10];
+    instanceBufferDataF32[offset++] = matrices.transform[11];
+    instanceBufferDataF32[offset++] = 0.0; // padding
+    instanceBufferDataF32[offset++] = 0.0; // padding
+    instanceBufferDataF32[offset++] = 0.0; // padding
+    instanceBufferDataF32[offset++] = 0.0; // padding
+    // normal matrix
+    instanceBufferDataF32[offset++] = matrices.normal[0];
+    instanceBufferDataF32[offset++] = matrices.normal[1];
+    instanceBufferDataF32[offset++] = matrices.normal[2];
+    instanceBufferDataF32[offset++] = matrices.normal[3];
+    instanceBufferDataF32[offset++] = matrices.normal[4];
+    instanceBufferDataF32[offset++] = matrices.normal[5];
+    instanceBufferDataF32[offset++] = matrices.normal[6];
+    instanceBufferDataF32[offset++] = matrices.normal[7];
+    instanceBufferDataF32[offset++] = matrices.normal[8];
+    instanceBufferDataF32[offset++] = matrices.normal[9];
+    instanceBufferDataF32[offset++] = matrices.normal[10];
+    instanceBufferDataF32[offset++] = matrices.normal[11];
+    instanceBufferDataF32[offset++] = matrices.normal[12];
+    instanceBufferDataF32[offset++] = matrices.normal[13];
+    instanceBufferDataF32[offset++] = matrices.normal[14];
+    instanceBufferDataF32[offset++] = matrices.normal[15];
     // offsets
     instanceBufferDataU32[offset++] = accelerationContainer.attributeOffset;
     instanceBufferDataU32[offset++] = accelerationContainer.faceOffset;
@@ -130,9 +188,9 @@ InstanceBuffer.prototype.init = function(instances, materials, textures, lights)
   let lightBufferTotalLength = lights.length * lightBufferStride;
   let lightBuffer = device.createBuffer({
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    size: lightBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT
+    size: lightBufferTotalLength * 4
   });
-  lightBuffer.byteLength = lightBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT;
+  lightBuffer.byteLength = lightBufferTotalLength * 4;
   buffers.light = lightBuffer;
 
   let lightBufferDataBase = new ArrayBuffer(lightBufferTotalLength * 4); 
@@ -157,7 +215,7 @@ InstanceBuffer.prototype.init = function(instances, materials, textures, lights)
     let {accelerationContainer} = geometry;
     let {material, transform} = instance.data;
     let instanceEntry = {};
-    instanceEntry.flags = GPURayTracingAccelerationInstanceFlag.NONE;
+    instanceEntry.flags = GPURayTracingAccelerationInstanceFlag.FORCE_OPAQUE;
     instanceEntry.mask = 0xFF;
     instanceEntry.instanceId = ii;
     instanceEntry.instanceOffset = 0x0;

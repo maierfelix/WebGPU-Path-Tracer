@@ -66,6 +66,45 @@ export function isJPEGFile(buffer) {
   );
 };
 
+let mModel = null;
+let mNormal = null;
+let mTransform = null;
+export function getTransformMatrix(transform) {
+  let {scale, rotation, translation} = transform;
+
+  if (mModel === null) mModel = mat4.create();
+  if (mNormal === null) mNormal = mat4.create();
+  if (mTransform === null) mTransform = mat4.create().subarray(0, 12);
+
+  mat4.identity(mModel);
+  mat4.identity(mTransform);
+
+  // translation
+  mat4.translate(mModel, mModel, vec3.fromValues(translation.x, translation.y, translation.z));
+  // rotation
+  mat4.rotateX(mModel, mModel, rotation.x * (Math.PI / 180));
+  mat4.rotateY(mModel, mModel, rotation.y * (Math.PI / 180));
+  mat4.rotateZ(mModel, mModel, rotation.z * (Math.PI / 180));
+  // scaling
+  mat4.scale(mModel, mModel, vec3.fromValues(scale.x, scale.y, scale.z));
+
+  // build normal matrix
+  mat4.identity(mNormal);
+  mat4.invert(mNormal, mModel);
+  mat4.transpose(mNormal, mNormal);
+
+  // build transform matrix
+  mTransform.set(mModel.subarray(0x0, 12), 0x0);
+  mTransform[3] = mModel[12];
+  mTransform[7] = mModel[13];
+  mTransform[11] = mModel[14];
+
+  return {
+    transform: mTransform,
+    normal: mNormal
+  };
+};
+
 function findIncludedFile(filePath, includes) {
   let matches = [];
   for (let ii = 0; ii < includes.length; ++ii) {
@@ -114,35 +153,6 @@ export function loadShaderFile(srcPath) {
   let src = fs.readFileSync(srcPath, "utf-8");
   let flattened = flattenShaderIncludes(src, [path.dirname(srcPath)]);
   return flattened;
-};
-
-let mModel = null;
-let mTransform = null;
-export function getTransformMatrix(transform) {
-  let {scale, rotation, translation} = transform;
-
-  if (mModel === null) mModel = mat4.create();
-  if (mTransform === null) mTransform = mat4.create().subarray(0, 12);
-
-  mat4.identity(mModel);
-  mat4.identity(mTransform);
-
-  // translation
-  mat4.translate(mModel, mModel, vec3.fromValues(translation.x, translation.y, translation.z));
-  // rotation
-  mat4.rotateX(mModel, mModel, rotation.x * (Math.PI / 180));
-  mat4.rotateY(mModel, mModel, rotation.y * (Math.PI / 180));
-  mat4.rotateZ(mModel, mModel, rotation.z * (Math.PI / 180));
-  // scaling
-  mat4.scale(mModel, mModel, vec3.fromValues(scale.x, scale.y, scale.z));
-
-  // build transform matrix
-  mTransform.set(mModel.subarray(0x0, 12), 0x0);
-  mTransform[3] = mModel[12];
-  mTransform[7] = mModel[13];
-  mTransform[11] = mModel[14];
-
-  return mTransform;
 };
 
 export function calculateTangentsAndBitangents(object) {

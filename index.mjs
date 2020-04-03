@@ -270,7 +270,7 @@ Object.assign(global, glMatrix);
       rpPass.getPickingResult().then(({ x, y, z, instanceId } = _) => {
         pickedInstanceId = instanceId - 1;
         if (pickedInstanceId >= 0) {
-          let instance = scene.getInstanceTransformById(pickedInstanceId);
+          let instance = scene.getInstanceById(pickedInstanceId);
           pickedInstance = instance;
         }
       });
@@ -379,16 +379,12 @@ Object.assign(global, glMatrix);
     swapChain.present();
 
     if (pickedInstanceId >= 0 && pickedInstance) {
-      // update instance data
-      pickedInstance.data.transform.rotation.y += 0.25;
-      instanceContainer.updateInstance(pickedInstanceId, {
-        flags: GPURayTracingAccelerationInstanceFlag.NONE,
-        mask: 0xFF,
-        instanceId: pickedInstanceId,
-        instanceOffset: 0x0,
-        geometryContainer: pickedInstance.parent.accelerationContainer.instance,
-        transform: pickedInstance.data.transform
-      });
+      // update transform (random for now)
+      pickedInstance.data.transform.rotation.x += Math.random();
+      pickedInstance.data.transform.rotation.y += Math.random();
+      pickedInstance.data.transform.rotation.z += Math.random();
+      // update instance buffer
+      rtPass.getInstanceBuffer().updateInstance(pickedInstanceId, pickedInstance);
       // update instance container
       let commandEncoder = device.createCommandEncoder({});
       commandEncoder.updateRayTracingAccelerationContainer(instanceContainer);

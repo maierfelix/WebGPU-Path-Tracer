@@ -70,7 +70,10 @@ void main() {
     Ray.throughput = vec4(1);
     for (uint bb = 0; bb < bounceCount; ++bb) {
       // execute the shading
-      traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
+      uint shadingRayFlags = (
+        gl_RayFlagsCullBackFacingTrianglesNV
+      );
+      traceNV(topLevelAS, shadingRayFlags, cullMask, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
 
       radiance += Ray.radianceAndDistance.rgb;
 

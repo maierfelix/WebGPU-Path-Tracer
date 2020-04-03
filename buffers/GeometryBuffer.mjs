@@ -39,16 +39,16 @@ GeometryBuffer.prototype.init = function(geometries) {
 
   let faceBuffer = device.createBuffer({
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    size: faceBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT
+    size: faceBufferTotalLength * 4
   });
-  faceBuffer.byteLength = faceBufferTotalLength * Uint32Array.BYTES_PER_ELEMENT;
+  faceBuffer.byteLength = faceBufferTotalLength * 4;
   buffers.face = faceBuffer;
 
   let attributeBuffer = device.createBuffer({
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    size: attributeBufferTotalLength * Float32Array.BYTES_PER_ELEMENT
+    size: attributeBufferTotalLength * 4
   });
-  attributeBuffer.byteLength = attributeBufferTotalLength * Float32Array.BYTES_PER_ELEMENT;
+  attributeBuffer.byteLength = attributeBufferTotalLength * 4;
   buffers.attribute = attributeBuffer;
 
   let faceBufferData = new Uint32Array(faceBufferTotalLength);
@@ -118,12 +118,12 @@ GeometryBuffer.prototype.init = function(geometries) {
       ]
     });
 
-    geometry.accelerationContainer = {
+    geometry.setAccelerationContainer({
       instance: container,
       faceOffset: faceBufferOffset,
       faceCount: indices.length,
       attributeOffset: attributeBufferOffset / attributeBufferStride
-    };
+    });
 
     faceBufferOffset += indices.length / 3 * faceBufferStride;
     attributeBufferOffset += indices.length * attributeBufferStride;

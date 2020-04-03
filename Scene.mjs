@@ -15,10 +15,6 @@ Texture.prototype.fromPath = function(path) {
   return this;
 };
 
-Texture.prototype.getImageData = function() {
-  return this.data || null;
-};
-
 class Material {
   constructor(parent, opts = {}) {
     this.parent = parent || null;
@@ -40,8 +36,8 @@ Geometry.prototype.fromPath = function(path) {
   return this;
 };
 
-Geometry.prototype.getObjectData = function() {
-  return this.data || null;
+Geometry.prototype.setAccelerationContainer = function(container) {
+  this.accelerationContainer = container;
 };
 
 Geometry.prototype.addMeshInstance = function(opts = {}) {
@@ -64,6 +60,7 @@ class GeometryInstance {
     this.parent = parent || null;
     this.data = opts;
     this.isLight = false;
+    this.instanceBufferByteOffset = 0x0;
   }
   get geometry() {
     return this.parent;
@@ -124,7 +121,7 @@ Scene.prototype.getLightsFlattened = function() {
   return out;
 };
 
-Scene.prototype.getInstanceTransformById = function(id) {
+Scene.prototype.getInstanceById = function(id) {
   let instances = this.getInstancesFlattened();
   return instances[id] || null;
 };

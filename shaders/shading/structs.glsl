@@ -69,6 +69,8 @@ struct Light {
 
 struct Instance {
   mat4x3 transformMatrix;
+  vec4 padding_0;
+  mat4x4 normalMatrix;
   uint vertexIndex;
   uint faceIndex;
   uint faceCount;

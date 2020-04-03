@@ -85,7 +85,7 @@ LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 
   const vec3 n0 = v0.normal.xyz;
   const vec3 n1 = v1.normal.xyz;
   const vec3 n2 = v2.normal.xyz;
-  const vec3 nw = normalize(mat3x3(instance.transformMatrix) * blerp(attribs, n0.xyz, n1.xyz, n2.xyz));
+  const vec3 nw = normalize(mat3x3(instance.normalMatrix) * blerp(attribs, n0.xyz, n1.xyz, n2.xyz));
 
   const float triangleArea = 0.5 * length(cross(p1 - p0, p2 - p0));
 
@@ -106,6 +106,15 @@ LightSource PickRandomLightSource(inout uint seed, in vec3 surfacePos, out vec3 
   const vec4 directionAndPdf = vec4(
     lightDir, lightPdf
   );
+
+  // backface
+  /*float cosTheta = dot(nw, normalize(lightPos));
+  if (max(cosTheta, 0.0) >= EPSILON) {
+    return LightSource(
+      emissionAndGeometryId,
+      vec4(lightDir, 0)
+    );
+  }*/
 
   lightDirection = lightDir;
   lightDistance = lightDist;
@@ -176,8 +185,8 @@ void main() {
   const vec3 no = blerp(Hit.xy, n0.xyz, n1.xyz, n2.xyz);
   const vec3 ta = blerp(Hit.xy, t0.xyz, t1.xyz, t2.xyz);
 
-  const vec3 nw = normalize(gl_ObjectToWorldNV * vec4(no, 0));
-  const vec3 tw = normalize(gl_ObjectToWorldNV * vec4(ta, 0));
+  const vec3 nw = normalize(mat3x3(instance.normalMatrix) * no);
+  const vec3 tw = normalize(mat3x3(instance.normalMatrix) * ta);
   const vec3 bw = cross(nw, tw);
 
   const vec3 tex0 = texture(sampler2DArray(TextureArray, TextureSampler), vec3(uv, material.albedoIndex)).rgb;
@@ -227,13 +236,16 @@ void main() {
   Ray.lightSource = lightSource;
 
   // shoot the shadow ray
-  traceNV(topLevelAS, gl_RayFlagsTerminateOnFirstHitNV, 0xFF, 1, 1, 1, surfacePosition, EPSILON, lightDirection, lightDistance - EPSILON, 1);
+  uint shadowRayFlags = (
+    gl_RayFlagsTerminateOnFirstHitNV |
+    gl_RayFlagsCullBackFacingTrianglesNV
+  );
+  traceNV(topLevelAS, shadowRayFlags, 0xFF, 1, 1, 1, surfacePosition, EPSILON, lightDirection, lightDistance - EPSILON, 1);
   Ray.shadowed = ShadowRay.shadowed;
 
-  vec3 Lo = DirectLight(instanceId, normal);
-  radiance += Lo * throughput;
+  radiance += DirectLight(instanceId, normal) * throughput;
 
-  vec3 bsdfDir = DisneySample(seed, -gl_WorldRayDirectionNV, normal);
+  const vec3 bsdfDir = DisneySample(seed, -gl_WorldRayDirectionNV, normal);
 
   const vec3 N = normal;
   const vec3 V = -gl_WorldRayDirectionNV;
@@ -245,7 +257,7 @@ void main() {
   const float HdotL = abs(dot(H, L));
   const float NdotV = abs(dot(N, V));
 
-  float pdf = DisneyPdf(NdotH, NdotL, HdotL);
+  const float pdf = DisneyPdf(NdotH, NdotL, HdotL);
   if (pdf > 0.0) {
     throughput *= DisneyEval(NdotL, NdotV, NdotH, HdotL) / pdf;
   } else {
