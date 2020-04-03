@@ -1,13 +1,12 @@
 # WebGPU Path Tracer
 
-Using [webgpu](https://github.com/maierfelix/webgpu) and [dawn-ray-tracing](https://github.com/maierfelix/dawn-ray-tracing)
-
-This is just a toy project, do not create PRs
+Using [node-webgpu](https://github.com/maierfelix/webgpu) and [dawn-ray-tracing](https://github.com/maierfelix/dawn-ray-tracing)
 
 # Running demo
 
  - Download the [assets](https://github.com/maierfelix/WebGPU-Path-Tracer/releases/download/0.0.1/assets.zip) and extract them into the project's root
- - Run `npm install` and then to run the demo `npm run start`
+ - Install dependencies with `npm install`
+ - Run the PT with `npm run start`
 
 # Controls
 
