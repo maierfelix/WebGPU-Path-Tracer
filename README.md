@@ -4,6 +4,11 @@ Using [webgpu](https://github.com/maierfelix/webgpu) and [dawn-ray-tracing](http
 
 This is just a toy project, do not create PRs
 
+# Running demo
+
+ - Download the [assets](https://github.com/maierfelix/WebGPU-Path-Tracer/releases/download/0.0.1/assets.zip) and extract them into the project's root
+ - Run `npm install` and then to run the demo `npm run start`
+
 # Screenshots
 
 The following scenes were rendered in just a few seconds on a RTX 2070
