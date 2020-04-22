@@ -100,7 +100,7 @@ InstanceBuffer.prototype.init = function(instances, materials, textures, lights)
     materialBufferDataF32[offset++] = color !== void 0 ? Math.pow(color[0] / 255.0, 1.0 / 2.2) : 0.0;
     materialBufferDataF32[offset++] = color !== void 0 ? Math.pow(color[1] / 255.0, 1.0 / 2.2) : 0.0;
     materialBufferDataF32[offset++] = color !== void 0 ? Math.pow(color[2] / 255.0, 1.0 / 2.2) : 0.0;
-    materialBufferDataF32[offset++] = 0.0; // alpha
+    materialBufferDataF32[offset++] = color !== void 0 && color.length === 4 ? Math.pow(color[3] / 255.0, 1.0 / 2.2) : 0.0;
     materialBufferDataF32[offset++] = emission !== void 0 ? Math.pow(emission[0] / 255.0, 1.0 / 2.2) : 0.0;
     materialBufferDataF32[offset++] = emission !== void 0 ? Math.pow(emission[1] / 255.0, 1.0 / 2.2) : 0.0;
     materialBufferDataF32[offset++] = emission !== void 0 ? Math.pow(emission[2] / 255.0, 1.0 / 2.2) : 0.0;

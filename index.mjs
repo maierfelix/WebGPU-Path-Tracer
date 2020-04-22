@@ -38,7 +38,9 @@ Object.assign(global, glMatrix);
     preferredBackend: "Vulkan"
   });
 
-  let device = await adapter.requestDevice();
+  let device = await adapter.requestDevice({
+    extensions: ["ray_tracing"]
+  });
 
   let camera = new Camera({ device });
   global["camera"] = camera;
