@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing  : require
 #extension GL_EXT_nonuniform_qualifier : enable
 #pragma shader_stage(raygen)
 
@@ -9,9 +9,9 @@ struct RayPayload {
   uint instanceId;
 };
 
-layout(location = 0) rayPayloadNV RayPayload Ray;
+layout(location = 0) rayPayloadEXT RayPayload Ray;
 
-layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 
 layout(binding = 1, std140) buffer PickingBuffer {
   vec4 inputData;
@@ -51,7 +51,7 @@ void main() {
   vec4 target = Camera.projectionInverse * (vec4(uv.x, uv.y, 1, 1));
   vec4 direction = Camera.viewInverse * vec4(normalize(target.xyz * Camera.focusDistance), 0);
 
-  traceNV(topLevelAS, gl_RayFlagsOpaqueNV, 0xFF, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
+  traceRayEXT(topLevelAS, gl_RayFlagsOpaqueNV, 0xFF, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
 
   Picking.outputData = vec4(
     Ray.position.xyz,

@@ -1,15 +1,15 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 #pragma shader_stage(raygen)
 
 #include "utils.glsl"
 
-layout (location = 0) rayPayloadNV RayPayload Ray;
-layout (location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
+layout (location = 0) rayPayloadEXT RayPayload Ray;
+layout (location = 1) rayPayloadEXT ShadowRayPayload ShadowRay;
 
-layout (binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+layout (binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 
 layout (binding = 1, std140) buffer PixelBuffer {
   vec4 pixels[];
@@ -44,8 +44,8 @@ layout (binding = 4) uniform SettingsBuffer {
 } Settings;
 
 void main() {
-  const ivec2 ipos = ivec2(gl_LaunchIDNV.xy);
-  const ivec2 resolution = ivec2(gl_LaunchSizeNV.xy);
+  const ivec2 ipos = ivec2(gl_LaunchIDEXT.xy);
+  const ivec2 resolution = ivec2(gl_LaunchSizeEXT.xy);
   const uint pixelIndex = ipos.y * resolution.x + ipos.x;
 
   const uint sampleCount = Settings.sampleCount;
@@ -60,7 +60,7 @@ void main() {
   for (uint ss = 0; ss < sampleCount; ++ss) {
     const vec2 offset = Camera.aperture / 2.0 * RandInUnitDisk(Ray.seed);
     const vec2 pixel = vec2(ipos.x + Randf01(Ray.seed), ipos.y + Randf01(Ray.seed));
-    const vec2 uv = (pixel / gl_LaunchSizeNV.xy) * 2.0 - 1.0;
+    const vec2 uv = (pixel / gl_LaunchSizeEXT.xy) * 2.0 - 1.0;
 
     vec4 origin = Camera.viewInverse * vec4(offset, 0, 1);
     vec4 target = Camera.projectionInverse * (vec4(uv.x, uv.y, 1, 1));
@@ -69,11 +69,7 @@ void main() {
     vec3 radiance = vec3(0);
     Ray.throughput = vec4(1);
     for (uint bb = 0; bb < bounceCount; ++bb) {
-      // execute the shading
-      uint shadingRayFlags = (
-        gl_RayFlagsCullBackFacingTrianglesNV
-      );
-      traceNV(topLevelAS, shadingRayFlags, cullMask, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
+      traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, cullMask, 0, 0, 0, origin.xyz, Camera.zNear, direction.xyz, Camera.zFar, 0);
 
       radiance += Ray.radianceAndDistance.rgb;
 

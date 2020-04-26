@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #pragma shader_stage(closest)
@@ -10,12 +10,12 @@ ShadingData shading;
 
 #include "disney.glsl"
 
-hitAttributeNV vec4 Hit;
+hitAttributeEXT vec3 Hit;
 
-layout (location = 0) rayPayloadInNV RayPayload Ray;
-layout (location = 1) rayPayloadNV ShadowRayPayload ShadowRay;
+layout (location = 0) rayPayloadInEXT RayPayload Ray;
+layout (location = 1) rayPayloadEXT ShadowRayPayload ShadowRay;
 
-layout (binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+layout (binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 
 layout (binding = 3) uniform CameraBuffer {
   vec4 forward;
@@ -147,7 +147,7 @@ vec3 DirectLight(const uint instanceId, in vec3 normal) {
   const vec3 powerPdf = lightEmission * Settings.lightCount;
 
   const vec3 N = normal;
-  const vec3 V = -gl_WorldRayDirectionNV;
+  const vec3 V = -gl_WorldRayDirectionEXT;
   const vec3 L = lightDir;
   const vec3 H = normalize(V + L);
 
@@ -166,8 +166,8 @@ vec3 DirectLight(const uint instanceId, in vec3 normal) {
 }
 
 void main() {
-  const vec3 surfacePosition = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_RayTmaxNV;
-  const uint instanceId = gl_InstanceCustomIndexNV;
+  const vec3 surfacePosition = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_RayTmaxEXT;
+  const uint instanceId = gl_InstanceCustomIndexEXT;
 
   const Instance instance = Instances[nonuniformEXT(instanceId)];
 
@@ -208,7 +208,7 @@ void main() {
   const vec3 emission = pow(tex3, vec3(GAMMA)) * material.emissionIntensity;
 
   uint seed = Ray.seed;
-  float t = gl_HitTNV;
+  float t = gl_HitTEXT;
 
   vec3 radiance = vec3(0);
   vec3 throughput = Ray.throughput.rgb;
@@ -236,19 +236,15 @@ void main() {
   Ray.lightSource = lightSource;
 
   // shoot the shadow ray
-  uint shadowRayFlags = (
-    gl_RayFlagsTerminateOnFirstHitNV |
-    gl_RayFlagsCullBackFacingTrianglesNV
-  );
-  traceNV(topLevelAS, shadowRayFlags, 0xFF, 1, 1, 1, surfacePosition, EPSILON, lightDirection, lightDistance - EPSILON, 1);
+  traceRayEXT(topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, 1, 0, 1, surfacePosition, EPSILON, lightDirection, lightDistance - EPSILON, 1);
   Ray.shadowed = ShadowRay.shadowed;
 
   radiance += DirectLight(instanceId, normal) * throughput;
 
-  const vec3 bsdfDir = DisneySample(seed, -gl_WorldRayDirectionNV, normal);
+  const vec3 bsdfDir = DisneySample(seed, -gl_WorldRayDirectionEXT, normal);
 
   const vec3 N = normal;
-  const vec3 V = -gl_WorldRayDirectionNV;
+  const vec3 V = -gl_WorldRayDirectionEXT;
   const vec3 L = bsdfDir;
   const vec3 H = normalize(V + L);
 

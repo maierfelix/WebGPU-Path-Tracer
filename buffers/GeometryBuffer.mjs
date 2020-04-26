@@ -38,14 +38,14 @@ GeometryBuffer.prototype.init = function(geometries) {
   };
 
   let faceBuffer = device.createBuffer({
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE | GPUBufferUsage.RAY_TRACING,
     size: faceBufferTotalLength * 4
   });
   faceBuffer.byteLength = faceBufferTotalLength * 4;
   buffers.face = faceBuffer;
 
   let attributeBuffer = device.createBuffer({
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE | GPUBufferUsage.RAY_TRACING,
     size: attributeBufferTotalLength * 4
   });
   attributeBuffer.byteLength = attributeBufferTotalLength * 4;

@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : enable
 #pragma shader_stage(closest)
 
 struct RayPayload {
@@ -8,11 +8,11 @@ struct RayPayload {
   uint instanceId;
 };
 
-layout(location = 0) rayPayloadInNV RayPayload Ray;
+layout(location = 0) rayPayloadInEXT RayPayload Ray;
 
-hitAttributeNV vec4 Hit;
+hitAttributeEXT vec4 Hit;
 
 void main() {
-  Ray.position.xyz = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_RayTmaxNV;
-  Ray.instanceId = gl_InstanceCustomIndexNV + 1;
+  Ray.position.xyz = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_RayTmaxEXT;
+  Ray.instanceId = gl_InstanceCustomIndexEXT + 1;
 }
