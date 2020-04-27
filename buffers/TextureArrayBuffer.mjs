@@ -75,8 +75,8 @@ TextureArrayBuffer.prototype.init = function(textures) {
     format: "rgba8unorm-srgb"
   });
 
-  let rowPitch = Math.ceil(initialWidth * 4 / 256) * 256;
-  let textureData = new Uint8Array(rowPitch * initialHeight);
+  let bytesPerRow = Math.ceil(initialWidth * 4 / 256) * 256;
+  let textureData = new Uint8Array(bytesPerRow * initialHeight);
   let textureCopyBuffer = device.createBuffer({
     size: textureData.byteLength,
     usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
@@ -91,7 +91,7 @@ TextureArrayBuffer.prototype.init = function(textures) {
     commandEncoder.copyBufferToTexture(
       {
         buffer: textureCopyBuffer,
-        rowPitch: rowPitch,
+        bytesPerRow: bytesPerRow,
         arrayLayer: 0,
         mipLevel: 0,
         imageHeight: 0

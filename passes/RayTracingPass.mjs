@@ -109,7 +109,7 @@ RayTracingPass.prototype.init = function(scene) {
   });
 
   let bindGroupLayout = device.createBindGroupLayout({
-    bindings: [
+    entries: [
       { binding: 0,  type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 1,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
       { binding: 2,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
@@ -121,13 +121,13 @@ RayTracingPass.prototype.init = function(scene) {
       { binding: 8,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 9,  type: "storage-buffer",         visibility: GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 10, type: "sampler",                visibility: GPUShaderStage.RAY_CLOSEST_HIT },
-      { binding: 11, type: "sampled-texture",        visibility: GPUShaderStage.RAY_CLOSEST_HIT, textureDimension: "2d-array" },
+      { binding: 11, type: "sampled-texture",        visibility: GPUShaderStage.RAY_CLOSEST_HIT, viewDimension: "2d-array" },
     ]
   });
 
   let bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
-    bindings: [
+    entries: [
       { binding: 0,  size: 0,                               accelerationContainer: instanceContainer },
       { binding: 1,  size: pixelBuffer.byteLength,          buffer: pixelBuffer },
       { binding: 2,  size: accumulationBuffer.byteLength,   buffer: accumulationBuffer },

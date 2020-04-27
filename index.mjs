@@ -216,7 +216,7 @@ Object.assign(global, glMatrix);
   let rpPass = new RayPickingPass({ device, instanceContainer });
 
   let blitBindGroupLayout = device.createBindGroupLayout({
-    bindings: [
+    entries: [
       { binding: 0, type: "storage-buffer", visibility: GPUShaderStage.FRAGMENT },
       { binding: 1, type: "uniform-buffer", visibility: GPUShaderStage.FRAGMENT },
     ]
@@ -224,7 +224,7 @@ Object.assign(global, glMatrix);
 
   let blitBindGroup = device.createBindGroup({
     layout: blitBindGroupLayout,
-    bindings: [
+    entries: [
       { binding: 0, size: pixelBuffer.byteLength,          buffer: pixelBuffer },
       { binding: 1, size: settings.getBuffer().byteLength, buffer: settings.getBuffer() },
     ]

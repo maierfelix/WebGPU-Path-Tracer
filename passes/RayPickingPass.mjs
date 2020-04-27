@@ -103,7 +103,7 @@ RayPickingPass.prototype.init = function(instanceContainer) {
   });
 
   let bindGroupLayout = device.createBindGroupLayout({
-    bindings: [
+    entries: [
       { binding: 0, type: "acceleration-container", visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT },
       { binding: 1, type: "storage-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
       { binding: 2, type: "uniform-buffer",         visibility: GPUShaderStage.RAY_GENERATION },
@@ -113,7 +113,7 @@ RayPickingPass.prototype.init = function(instanceContainer) {
 
   let bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
-    bindings: [
+    entries: [
       { binding: 0, size: 0,                               accelerationContainer: instanceContainer },
       { binding: 1, size: pickingBuffer.byteLength,        buffer: pickingBuffer },
       { binding: 2, size: camera.getBuffer().byteLength,   buffer: camera.getBuffer() },
